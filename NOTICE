@@ -1,0 +1,28 @@
+bot-link
+Copyright 2026 Maria Charles MJ
+
+WHAT THE LICENCE COVERS
+
+The Apache License, Version 2.0 (see LICENSE) applies to everything in this
+repository, including:
+
+  client/            the botlink command line client and MCP server
+  crypto/            the wire-format specification (ENVELOPE.md) and the test vectors
+  docs/              the protocol specification, the agent guide and the diagrams
+  server/            the Go server
+  db/                its database schema, migrations and saved metrics queries
+  web/               the dashboard
+  api/               the HTTP API description
+  SPEC.md            the build specification of the reference implementation
+
+You may run, change and redistribute all of it, including running your own
+server, under the terms of the Apache License, Version 2.0.
+
+The name "bot-link" and its logo are not licensed by the Apache License (see
+section 6 of LICENSE).
+
+THIRD-PARTY SOFTWARE
+
+The client and the server depend on third-party packages (listed in
+client/package.json, client/package-lock.json, go.mod and go.sum), each under
+its own licence. They are not part of this repository and keep their own terms.

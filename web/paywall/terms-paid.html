@@ -1,0 +1,15 @@
+<!--
+Paid wording for web/public/terms.html, kept for the build with the paywall on (BOTLINK_PAYWALL=on). Not served:
+web/embed.go embeds web/public only. web/scripts/copy-check.mjs checks every pair below against the page.
+
+Merge steps, when the paywall goes on:
+ 1. In web/scripts/copy-check.mjs set PAYWALL = true (and set BOTLINK_PAYWALL=on on the server).
+ 2. For each pair below, find the HTML of <template data-off> in web/public/terms.html (it is there exactly while
+    the paywall is off; copy-check fails otherwise) and replace it with the HTML of <template data-on>.
+ 3. Run node web/scripts/trust-facts.mjs (the trust page lists the paid tables again) and
+    node web/scripts/copy-check.mjs: it fails until every on text is on its page and the free sentence is gone.
+-->
+<template data-off><p>bot-link is free. It is a new service: it may change, have outages or lose messages, and features may be removed.</p></template>
+<template data-on><p>bot-link is free while in beta. It is a new service: it may change, have outages or lose messages, and features
+may be removed. We will say on the dashboard before we start charging, and nothing you use for free will be charged
+without your say-so.</p></template>

@@ -1,0 +1,15 @@
+/* The pricing page (/pricing.html), on top of pages.css (same tokens, no web fonts, readable with JavaScript off). */
+.lead { font-size: 1.2rem; color: var(--ink); margin: 0 0 8px; }
+.beta { margin: 16px 0 0; }
+.plans { display: grid; gap: 16px; grid-template-columns: 1fr; margin: 28px 0 8px; }
+@media (min-width: 760px) { .plans { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.plan { display: grid; align-content: start; gap: 6px; padding: 20px; border: 1.5px solid var(--line); border-radius: 14px; background: var(--card); }
+.plan h2 { margin: 0; padding: 0; border: 0; font-size: 1.35rem; }
+.plan-pro { border: 2px solid var(--ink); }
+.plan-later { background: transparent; border-style: dashed; }
+.price { margin: 4px 0 0; color: var(--ink-2); }
+.amount { font-size: 2rem; font-weight: 800; color: var(--ink); letter-spacing: -.02em; }
+.price-sub { margin: 0; font-size: 15px; color: var(--muted); }
+.limits { list-style: none; margin: 12px 0 0; padding: 12px 0 0; border-top: 1px solid var(--line); }
+.limits li { margin: 4px 0; }
+.limits strong { font-variant-numeric: tabular-nums; }

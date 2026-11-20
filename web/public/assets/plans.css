@@ -1,0 +1,114 @@
+/* Plan and usage, the payment return page and the admin plans screens (views/usage.js, billing.js, admin-plans.js).
+   Imported by app.css; uses its tokens, so light and dark follow the theme. Calm by design: being over a limit is
+   warm amber, never alarm red. */
+
+/* ── plan and usage ───────────────────────────────────────────────────── */
+.usage-body { display: grid; gap: 22px; }
+.usage-body .page-head { margin-bottom: 0; }
+.usage-head { align-items: flex-start; }
+.usage-head-side { display: flex; flex-wrap: wrap; gap: 10px; }
+.usage-grid { display: grid; gap: 22px; grid-template-columns: 1fr; align-items: start; }
+@media (min-width: 1000px) { .usage-grid { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); } }
+.usage-side { display: grid; gap: 22px; min-width: 0; }
+.usage-body .panel + .panel { margin-top: 0; }
+.usage-panel .panel-body { display: grid; gap: 14px; }
+
+.usage-notes { display: grid; gap: 12px; }
+.usage-note { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border: 2px solid var(--edge); border-radius: var(--r-md); background: var(--card); box-shadow: 0 4px 0 var(--hard); }
+.usage-note strong { display: block; font-size: 16px; margin-bottom: 2px; }
+.usage-note p { color: var(--ink-2); }
+.usage-note p + p { margin-top: 4px; }
+.usage-note-ic { flex: none; width: 36px; height: 36px; display: grid; place-items: center; border: 1.5px solid var(--char-ink); border-radius: 12px; color: #15333a; background: var(--sun); }
+.usage-over { background: var(--sun-tint); }
+.usage-over .usage-mean { font-weight: 650; color: var(--ink); }
+.usage-note.is-boost { background: var(--lilac-tint); }
+.usage-note.is-boost .usage-note-ic { background: var(--lilac); }
+.usage-note.is-ending { background: var(--blue-tint); }
+.usage-note.is-ending .usage-note-ic { background: var(--mint); }
+
+.lims { list-style: none; margin: 0; padding: 0; display: grid; gap: 18px; }
+.lim { display: grid; gap: 8px; }
+.lim-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.lim-name { display: inline-flex; align-items: center; gap: 8px; font-weight: 750; }
+.lim-num { font: 600 1.25rem/1.1 var(--display); letter-spacing: -.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.lim-badge { background: var(--sun); }
+.lim-bar { position: relative; height: 14px; border: 2px solid var(--edge); border-radius: 999px; background: var(--paper-2); overflow: hidden; }
+.lim-fill { position: absolute; inset: 0 auto 0 0; border-radius: 999px; background: var(--mint); transition: width .6s var(--ease); }
+.lim.is-over .lim-fill { background: repeating-linear-gradient(-45deg, var(--sun) 0 10px, var(--peach) 10px 20px); }
+.lim-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; font-size: 14px; color: var(--muted); }
+.lim-src { font-weight: 650; color: var(--ink-2); }
+.lim.is-over .lim-num { color: var(--warn); }
+
+.usage-pro-limits { font-weight: 650; color: var(--ink); }
+.usage-upgrade .panel-head { background: color-mix(in srgb, var(--sun) 30%, var(--card)); }
+.usage-upgrade .row-actions { margin-top: 0; }
+.usage-upgrade .btn { white-space: normal; text-align: center; }
+
+.ud-stats { display: grid; gap: 10px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ud-stat { display: grid; gap: 2px; align-content: start; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: var(--r-sm); background: var(--card-2); min-width: 0; }
+.ud-stat-label { font-size: 13px; font-weight: 750; color: var(--muted); line-height: 1.25; }
+.ud-stat strong { font: 600 clamp(1.4rem, 1.1rem + 1vw, 1.9rem)/1.1 var(--display); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.ud-chart { display: grid; gap: 6px; }
+.ud-bars { height: 120px; display: flex; align-items: flex-end; gap: 3px; padding: 0 2px; border-bottom: 2px solid var(--edge); }
+.ud-bar { flex: 1 1 0; min-width: 0; height: max(3px, var(--h, 0%)); border-radius: 4px 4px 0 0; background: var(--blue); }
+.ud-bar.is-zero { background: var(--line); }
+.ud-bar:last-child { background: color-mix(in srgb, var(--blue) 55%, var(--card)); }
+.ud-axis { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); font-weight: 650; }
+.ud-more > summary { min-height: 44px; display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 700; color: var(--ink-2); border-radius: 10px; }
+.ud-more > summary:hover { color: var(--ink); }
+.ud-more[open] > summary { margin-bottom: 10px; }
+
+.credit-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.credit-balance { font: 600 clamp(2rem, 1.6rem + 1.4vw, 2.6rem)/1 var(--display); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.credit-unit { font-weight: 700; color: var(--muted); }
+.ledger td.is-plus { color: var(--live); font-weight: 700; }
+.ledger td.is-minus { color: var(--warn); font-weight: 700; }
+
+/* ── payment return and the test payment page ─────────────────────────── */
+.bill-card { display: grid; gap: 14px; padding: clamp(22px, 5vw, 40px); margin-top: 8px; }
+.bill-card .row-actions { margin-top: 4px; }
+.bill-status { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 10px 14px; border: 1.5px dashed var(--line); border-radius: var(--r-sm); background: var(--card-2); font-weight: 650; color: var(--ink-2); }
+.bill-status.is-done { border-style: solid; border-color: color-mix(in srgb, var(--live) 60%, var(--line)); background: var(--mint-tint); color: var(--ink); }
+.bill-status .icon { flex: none; }
+.bill-spin { flex: none; width: 18px; height: 18px; border: 2.4px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; }
+
+/* ── admin: plans and limits ──────────────────────────────────────────── */
+.adm-plans { display: grid; gap: 22px; margin-top: 40px; padding-top: 28px; border-top: 2px dashed var(--line); scroll-margin-top: 80px; }
+.adm-plans .panel + .panel { margin-top: 0; }
+.adm-plans-head { display: grid; gap: 8px; }
+.adm-plans .form-status { color: var(--ink-2); }
+.adm-plans .form-status.is-error { color: var(--danger); }
+.adm-plans h3 { font: 750 17px/1.2 var(--sans); }
+.adm-plans h4 { font: 750 16px/1.2 var(--sans); }
+.adm-head-side .chip { justify-self: end; }
+.plan-forms { display: grid; gap: 16px; grid-template-columns: 1fr; }
+@media (min-width: 1180px) { .plan-forms { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.plan-form, .acct-form { display: grid; gap: 12px; align-content: start; padding: 16px; border: 1.5px solid var(--line); border-radius: var(--r-md); background: var(--card-2); min-width: 0; }
+.plan-form .row-actions, .acct-form .row-actions { margin-top: 0; }
+.plan-form-head { display: grid; gap: 2px; }
+.plan-form-head .muted { font-size: 14px; }
+.plan-fields { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.plan-fields .field label { font-size: 15px; }
+.input-num { font-variant-numeric: tabular-nums; }
+.plan-note { min-height: 1.4em; font-size: 15px; font-weight: 650; color: var(--ink-2); }
+.plan-note.is-down { color: var(--warn); }
+select.input { appearance: auto; }
+.acct-find { display: grid; gap: 10px; max-width: 560px; }
+.acct-find .row-actions { margin-top: 0; }
+.acct { display: grid; gap: 14px; margin-top: 16px; padding-top: 16px; border-top: 1.5px solid var(--line); }
+.acct-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.acct-boosts { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.acct-boosts li { padding: 8px 12px; border-radius: var(--r-sm); background: var(--card-2); font-size: 15px; }
+.acct-boosts li.is-ended { color: var(--muted); }
+.acct-why { display: block; color: var(--muted); font-size: 14px; }
+.acct-forms { display: grid; gap: 16px; grid-template-columns: 1fr; }
+@media (min-width: 1080px) { .acct-forms { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+@media (max-width: 560px) {
+  .ud-stats { grid-template-columns: 1fr; }
+  .ud-stat { grid-template-columns: 1fr auto; align-items: center; }
+  .ud-bars { gap: 2px; height: 96px; }
+  .plan-fields { grid-template-columns: 1fr; }
+  .usage-head-side, .usage-head-side .btn { width: 100%; }
+  .adm-head-side .chip { justify-self: start; }
+}

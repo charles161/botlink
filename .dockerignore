@@ -1,0 +1,13 @@
+# Only what the Dockerfile copies matters; keep local builds, dependencies and secrets out of the build context.
+.git
+.dev
+**/node_modules
+client/dist
+**/*.log
+.env
+.env.*
+!.env.example
+web/shots
+web/test
+test-results
+playwright-report

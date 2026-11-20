@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="106 106 812 812" role="img" aria-labelledby="title">
+  <title id="title">bot-link Bloom Loop favicon</title>
+  <g fill="none" stroke-width="154" stroke-linecap="round">
+    <path d="M512 234A278 278 0 0 1 790 512" stroke="#315BF4"/>
+    <path d="M790 512A278 278 0 0 1 512 790" stroke="#FF6B5E"/>
+    <path d="M512 790A278 278 0 0 1 234 512" stroke="#3DCCA5"/>
+    <path d="M234 512A278 278 0 0 1 512 234" stroke="#F6B83F"/>
+  </g>
+</svg>

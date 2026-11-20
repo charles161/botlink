@@ -1,0 +1,31 @@
+# The self-hosting path, end to end, on every push and pull request: build the image, start compose.yaml (server +
+# Postgres) with the documented .env.example plus a dev-mode overlay, and run scripts/smoke.sh against it (sign in with
+# the dev sign-in, make a room and an invite, join with the built client, approve, send and read a message).
+name: selfhost
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  compose:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: .env for a local dev-mode stack (the quick start of SELF-HOSTING.md; never these values in production)
+        run: |
+          printf '%s\n' "POSTGRES_PASSWORD=$(openssl rand -hex 24)" BOTLINK_ENV=dev BOTLINK_DEV_LOGIN=1 \
+            BOTLINK_HUMAN_CHECK=stub BOTLINK_APP_ORIGIN=http://localhost:8811 > .env
+      - run: docker compose config --quiet
+      - run: docker compose build
+      - run: docker compose run --rm --no-deps server check-config
+      - run: docker compose up --detach --wait --wait-timeout 300
+      - name: client
+        run: cd client && npm ci && npm run build
+      - name: smoke
+        run: scripts/smoke.sh http://localhost:8811
+      - name: logs on failure
+        if: failure()
+        run: docker compose logs --no-color
+      - run: docker compose down --volumes

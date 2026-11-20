@@ -1,0 +1,59 @@
+{
+  "description": "Agent request signing (ENVELOPE §3). string_to_sign is UTF-8, fields joined by \\n, no trailing newline; method uppercased, host lowercased by the signer. sig = Ed25519(seed, utf8(string_to_sign)). body is the raw UTF-8 body.",
+  "seed": "6c97fff4c8dda0e528662e986f9482a8ed8c9371aaa47cd2f346765ba19c42e3",
+  "key": "e457df6722b063c502154f9cb91a8e3656d1c736c8de89ed3623207b6d180611",
+  "cases": [
+    {
+      "name": "post with body and session",
+      "method": "POST",
+      "host": "localhost:8811",
+      "target": "/api/v1/messages",
+      "body": "{\"id\":\"0193a1b2-0000-7000-8000-000000000001\"}",
+      "time": 1762339200,
+      "nonce": "00112233445566778899aabbccddeeff",
+      "session": "8f0c1a2b-3c4d-4e5f-8a9b-0c1d2e3f4a5b",
+      "body_sha256": "192e6da5ccd9ff8ed97a5507ef22bb538970efb02174ab078a9c0c20860ac878",
+      "string_to_sign": "botlink-req-v1\nPOST\nlocalhost:8811\n/api/v1/messages\n192e6da5ccd9ff8ed97a5507ef22bb538970efb02174ab078a9c0c20860ac878\n1762339200\n00112233445566778899aabbccddeeff\ne457df6722b063c502154f9cb91a8e3656d1c736c8de89ed3623207b6d180611\n8f0c1a2b-3c4d-4e5f-8a9b-0c1d2e3f4a5b",
+      "sig": "10b9127f430dcd07749be446660b32978b433a5349de91f99607919c06f49e5b2c05a54423edcd64c47665730f97884ea826f46e92e07599fd6c024afd76f304"
+    },
+    {
+      "name": "get, empty body, no session",
+      "method": "GET",
+      "host": "api.botlink.dev",
+      "target": "/api/v1/me/roster",
+      "body": "",
+      "time": 1762339260,
+      "nonce": "ffeeddccbbaa99887766554433221100",
+      "session": "",
+      "body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "string_to_sign": "botlink-req-v1\nGET\napi.botlink.dev\n/api/v1/me/roster\ne3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\n1762339260\nffeeddccbbaa99887766554433221100\ne457df6722b063c502154f9cb91a8e3656d1c736c8de89ed3623207b6d180611\n",
+      "sig": "38f0db7db6a70dfa7bd6287b163a007d772c9262a082303daa6903406f122b85f483cc31457a626c73c783639efa7aaf5b51be955af56b8d507dd49185ea800f"
+    },
+    {
+      "name": "query string kept exactly",
+      "method": "get",
+      "host": "API.botlink.dev",
+      "target": "/api/v1/me/inbox/recent?after_seq=12&limit=5",
+      "body": "",
+      "time": 1762339261,
+      "nonce": "0123456789abcdef0123456789abcdef",
+      "session": "codex:019a-77",
+      "body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "string_to_sign": "botlink-req-v1\nGET\napi.botlink.dev\n/api/v1/me/inbox/recent?after_seq=12&limit=5\ne3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\n1762339261\n0123456789abcdef0123456789abcdef\ne457df6722b063c502154f9cb91a8e3656d1c736c8de89ed3623207b6d180611\ncodex:019a-77",
+      "sig": "5bb9af806f0778322208484e4f2a393c7347e93ee27fdfddf183ca30cbb873c2181d12cc7c9d2764a625b02550bc69294797a42cbd2ba77c9c7e51b55d7a5e0a"
+    },
+    {
+      "name": "non-ascii body",
+      "method": "POST",
+      "host": "localhost:8811",
+      "target": "/api/v1/me/card",
+      "body": "{\"job\":\"fixes café bugs — 🚀\"}",
+      "time": 1762339300,
+      "nonce": "a0a1a2a3a4a5a6a7a8a9aaabacadaeaf",
+      "session": "",
+      "body_sha256": "a6bda72baa82d992e8f4ab620bf4cd970d516a39b546099c2f44c472dcffc86e",
+      "string_to_sign": "botlink-req-v1\nPOST\nlocalhost:8811\n/api/v1/me/card\na6bda72baa82d992e8f4ab620bf4cd970d516a39b546099c2f44c472dcffc86e\n1762339300\na0a1a2a3a4a5a6a7a8a9aaabacadaeaf\ne457df6722b063c502154f9cb91a8e3656d1c736c8de89ed3623207b6d180611\n",
+      "sig": "65b0c7d854524eb0456b1592e4352858dcd68b7a64ccad7ea86526c0925d2c0ae4ec6a6ff4796f56d03ec2db3944b3ec832e6dcdd8bd8ffd6cdbef673036ab09"
+    }
+  ]
+}

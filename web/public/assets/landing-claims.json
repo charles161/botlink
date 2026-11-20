@@ -1,0 +1,458 @@
+{
+ "about": "The landing page's security steps, each with the code it rests on. Written by web/scripts/trust-facts.mjs; do not edit by hand.",
+ "section": {
+  "kicker": "How it's secured",
+  "title": "What keeps a room yours.",
+  "lead": "Six things bot-link does in code. The web build checks each step against the lines of code it rests on.",
+  "open_hint": "Every step opens to its details and where it stops.",
+  "details_label": "The details and where it stops",
+  "limit_label": "Where it stops:",
+  "trust_link": {
+   "text": "See the actual signed request",
+   "href": "/trust.html#server"
+  },
+  "security_link": {
+   "text": "Read the security page",
+   "href": "/security.html"
+  }
+ },
+ "hero": {
+  "text": "Only a person with a passkey lets a chat in, and messages are encrypted on the sender's computer, so our server passes them on without a key to read them.",
+  "sources": [
+   {
+    "file": "server/internal/humancheck/humancheck.go",
+    "pattern": "var EveryTime = map\\[string\\]bool\\{\"approve_join\": true, ApproveJoinsAction: true, ConfirmRoomAction: true\\}",
+    "flags": ""
+   },
+   {
+    "file": "crypto/ENVELOPE.md",
+    "pattern": "ct = base64\\(crypto_box_seal\\(plaintext, recipient_x25519_pk\\)\\)",
+    "flags": ""
+   },
+   {
+    "file": "crypto/ENVELOPE.md",
+    "pattern": "the server never seals or opens",
+    "flags": ""
+   },
+   {
+    "file": "server/test/secfix_test.go",
+    "test": "TestEveryJoinApprovalNeedsPasskey"
+   }
+  ]
+ },
+ "steps": [
+  {
+   "id": "signed-requests",
+   "icon": "key",
+   "title": "Each chat has its own key and signs its requests.",
+   "short": "Our server acts for a chat only on requests signed with its key, each timed and used once.",
+   "limits_in_short": false,
+   "text": "Each chat in a room has its own key pair, made on the chat's computer, and the private half stays there. Every request a chat sends to our server carries the time, a one-time number and a signature over the method, the address, a hash of the body, the time and that number. The server refuses a request more than 60 seconds off its own clock, or one whose number it has had before.",
+   "caveat": "Two requests go unsigned: looking up an invite, and a health check. Your browser is not a chat: it signs in with GitHub or Google and keeps a cookie.",
+   "sources": [
+    {
+     "file": "client/src/reqsign.ts",
+     "pattern": "\\[CTX_REQ, p\\.method\\.toUpperCase\\(\\), p\\.host\\.toLowerCase\\(\\), p\\.target, bodyHash\\(p\\.body\\), String\\(p\\.time\\), p\\.nonce, p\\.key, p\\.session \\|\\| \"\"\\]",
+     "flags": ""
+    },
+    {
+     "file": "client/src/core.ts",
+     "pattern": "const keys = c\\.genKeys\\(\\);",
+     "flags": ""
+    },
+    {
+     "file": "crypto/ENVELOPE.md",
+     "pattern": "Keys never leave the machine",
+     "flags": ""
+    },
+    {
+     "file": "server/internal/agentapi/auth.go",
+     "pattern": "if d := now - t; d > \\d+ \\|\\| d < -\\d+ \\{",
+     "flags": ""
+    },
+    {
+     "file": "server/internal/agentapi/auth.go",
+     "pattern": "insert into request_nonces \\(key_pk, nonce\\) values \\(\\$1, \\$2\\) on conflict do nothing",
+     "flags": ""
+    },
+    {
+     "file": "server/internal/agentapi/auth.go",
+     "pattern": "mux\\.Handle\\(\"GET \\/api\\/v1\\/invites\\/\\{invite\\}\", httpx\\.Handler\\(a\\.getInvite\\)\\)",
+     "flags": ""
+    },
+    {
+     "file": "server/internal/agentapi/auth.go",
+     "pattern": "mux\\.Handle\\(\"POST \\/api\\/v1\\/room-drafts\", a\\.signed\\(authKey, a\\.postRoomDraft\\)\\)",
+     "flags": ""
+    },
+    {
+     "file": "server/test/studyapp_test.go",
+     "test": "TestT9Replay"
+    },
+    {
+     "file": "server/test/roomdrafts_test.go",
+     "test": "TestRoomDraftCreateErrors"
+    }
+   ]
+  },
+  {
+   "id": "human-approves",
+   "icon": "fingerprint",
+   "title": "A person approves every chat that joins, with a passkey.",
+   "short": "Every join is confirmed with a passkey on the dashboard; a brand-new account sets its first passkey up in that step.",
+   "limits_in_short": true,
+   "short_must_say": [
+    "a brand-new account sets its first passkey up in that step"
+   ],
+   "text": "A chat that asks to join shows a 6-character code. Its person finds the request on the dashboard, checks that the code matches, and approves with a passkey: Face ID, a fingerprint, a phone or a security key. Each approval asks for the passkey again, even one a minute after the last; one approval can let in up to five waiting chats of one room that you tick, each beside its own code. A chat that moves to another chat or computer is approved with a passkey too. The API that chats use has no call that approves anything.",
+   "caveat": "A brand-new account sets up its first passkey during its first approval, and only within 5 minutes of signing in. Approving a person who asked to join your room, or a new browser of yours, asks for a passkey too, but not again within 60 minutes of the last one; an account with no passkey so far may use a sign-in from the last 5 minutes instead. Your first browser is approved by signing in. The code is made by our server: it tells requests apart, it does not prove a chat's key.",
+   "sources": [
+    {
+     "file": "server/internal/humancheck/humancheck.go",
+     "pattern": "var EveryTime = map\\[string\\]bool\\{\"approve_join\": true, ApproveJoinsAction: true, ConfirmRoomAction: true\\}",
+     "flags": ""
+    },
+    {
+     "file": "server/internal/appapi/approve.go",
+     "pattern": "a\\.verifyHuman\\(r, s, &b\\.HumanCheck, \"approve_join\", id\\)",
+     "flags": ""
+    },
+    {
+     "file": "server/internal/appapi/approve.go",
+     "pattern": "\\/\\/ POST \\/app\\/v1\\/join-requests\\/\\{id\\}\\/approve: member_add \\(join\\) or member_rekey \\(claim\\)",
+     "flags": ""
+    },
+    {
+     "file": "server/internal/appapi/room_drafts.go",
+     "pattern": "a\\.verifyHuman\\(r, s, &b\\.HumanCheck, humancheck\\.ConfirmRoomAction, id\\)",
+     "flags": ""
+    },
+    {
+     "file": "server/internal/appapi/room_drafts.go",
+     "pattern": "if err := consumeApproval\\(ctx, tx, b\\.HumanCheck\\.ID, s\\); err != nil \\{",
+     "flags": ""
+    },
+    {
+     "file": "server/internal/humancheck/humancheck.go",
+     "pattern": "const MaxTargets = 5",
+     "flags": ""
+    },
+    {
+     "file": "server/internal/appapi/approve_batch.go",
+     "pattern": "a\\.HC\\.VerifySet\\(ctx, a\\.St\\.Pool, s, &b\\.HumanCheck, roomID, ids, httpx\\.ClientIP\\(r, a\\.Cfg\\.TrustCF\\)\\)",
+     "flags": ""
+    },
+    {
+     "file": "server/internal/appapi/approve_batch.go",
+     "pattern": "if err := humancheck\\.ConsumeSet\\(ctx, tx, b\\.HumanCheck\\.ID, s, roomID, ids\\); err != nil \\{",
+     "flags": ""
+    },
+    {
+     "file": "server/internal/appapi/approve_batch.go",
+     "pattern": "if err := a\\.admitChat\\(ctx, tx, s\\.AccountID, roomID, it\\.RosterEntry, chats\\[i\\], &hit\\); err != nil \\{",
+     "flags": ""
+    },
+    {
+     "file": "server/internal/humancheck/humancheck.go",
+     "pattern": "if st == \"register\" && !s\\.FreshLogin && action != ResetFinishAction \\{",
+     "flags": ""
+    },
+    {
+     "file": "server/internal/humancheck/humancheck.go",
+     "pattern": "case !EveryTime\\[action\\] && s\\.UVFresh:\\s*\\n\\s*return \"skip\"\\s*\\n\\s*case !EveryTime\\[action\\] && s\\.FreshLogin && !had:",
+     "flags": ""
+    },
+    {
+     "file": "server/internal/appapi/account.go",
+     "pattern": "the account's first browser is approved by signing in; every later one by a browser already approved",
+     "flags": ""
+    },
+    {
+     "file": "crypto/ENVELOPE.md",
+     "pattern": "Proves nothing about keys; the fingerprint and the signed roster do that",
+     "flags": ""
+    },
+    {
+     "file": "server/test/secfix_test.go",
+     "test": "TestEveryJoinApprovalNeedsPasskey"
+    },
+    {
+     "file": "server/test/secfix_test.go",
+     "test": "TestPasskeyAddRemoveAndStolenSession"
+    },
+    {
+     "file": "server/test/security_test.go",
+     "test": "TestAgentRouteTable"
+    },
+    {
+     "file": "server/test/security_test.go",
+     "test": "TestProdRefusesDevAndStub"
+    },
+    {
+     "file": "server/test/roomdrafts_test.go",
+     "test": "TestRoomDraftConfirmRules"
+    },
+    {
+     "file": "server/test/batchapprove_test.go",
+     "test": "TestBatchCheckAsksPasskeyEveryTime"
+    },
+    {
+     "file": "server/test/batchapprove_test.go",
+     "test": "TestBatchCheckBinding"
+    },
+    {
+     "file": "web/test/test_create.py",
+     "test": "real_pass"
+    }
+   ]
+  },
+  {
+   "id": "signed-member-list",
+   "icon": "users",
+   "title": "Every chat checks the signed member list.",
+   "short": "Every chat checks that each member was signed for in a browser, so a member added without a browser's signature is caught.",
+   "limits_in_short": true,
+   "short_must_say": [
+    "without a browser's signature"
+   ],
+   "text": "Who is in a room is a chained list in which every change is signed. A chat's entry must be signed by a browser key of the person whose chat it is, and a browser key gets on the list only when that person's browser or the room owner's signs it. These keys are made in the browser and cannot be exported. Every chat checks the whole list before it sends or shows a message, so a chat our server adds by itself, with no such signature, fails the check: the other chats stop and tell their person instead of sending to it.",
+   "caveat": "The dashboard's code comes from our server. A server that served a changed page could make your browser sign a change you did not mean, or approve another chat than the one you see.",
+   "sources": [
+    {
+     "file": "client/src/roster.ts",
+     "pattern": "if \\(!deviceOf\\(st, e\\.account, by\\)\\) fail\\(\"signer\", seq, \"member_add not signed by a device of that person\"\\)",
+     "flags": ""
+    },
+    {
+     "file": "client/src/roster.ts",
+     "pattern": "if \\(!\\(deviceOf\\(st, e\\.account, by\\) \\|\\| ownerDevice\\(st, by\\)\\)\\) fail\\(\"signer\", seq, \"device_add not signed by that person's device or an owner device\"\\)",
+     "flags": ""
+    },
+    {
+     "file": "crypto/ENVELOPE.md",
+     "pattern": "Any failure → the whole roster is invalid\\. The client refuses to send or show messages for that room",
+     "flags": ""
+    },
+    {
+     "file": "web/public/assets/js/crypto.js",
+     "pattern": "crypto\\.subtle\\.generateKey\\(\\{ name: \"Ed25519\" \\}, false, \\[\"sign\", \"verify\"\\]\\)",
+     "flags": ""
+    },
+    {
+     "file": "SPEC.md",
+     "pattern": "a server that serves malicious dashboard JavaScript at approval time",
+     "flags": ""
+    },
+    {
+     "file": "client/test/flow.test.ts",
+     "test": "T8b: approval signed by a device of ANOTHER person is rejected by the roster rules -> mismatch"
+    },
+    {
+     "file": "client/test/flow.test.ts",
+     "test": "recipients_changed with a server list that disagrees with the signed roster -> stop, nothing sent"
+    },
+    {
+     "file": "server/internal/appapi/room_drafts.go",
+     "pattern": "if err := a\\.admitChat\\(ctx, tx, s\\.AccountID, b\\.Room\\.ID, b\\.RosterEntry, d\\.chat, &hit\\); err != nil \\{",
+     "flags": ""
+    },
+    {
+     "file": "server/test/roomdrafts_test.go",
+     "test": "TestRoomDraftConfirmRules"
+    },
+    {
+     "file": "client/test/roomtool.test.ts",
+     "test": "self-check passes only for this chat's own member_add (its keys, the draft's member id and name) signed by the owner's device, in a roster from genesis"
+    }
+   ]
+  },
+  {
+   "id": "signed-updates",
+   "icon": "refresh",
+   "title": "Updates are signed and checked before they install.",
+   "short": "Your client installs only updates signed with bot-link's release key, kept on our server machine for now, and refuses older ones.",
+   "limits_in_short": true,
+   "short_must_say": [
+    "kept on our server machine"
+   ],
+   "text": "Your client installs a new version of itself only when the release is signed with bot-link's release key, whose public half is built into the client. An unsigned release, a bad signature or a release older than the one it has is refused before anything is downloaded. BOTLINK_NO_UPDATE=1 turns updates off.",
+   "caveat": "Today the release key sits on our server machine and releases are signed there, so whoever takes over that machine could sign one. The first install trusts our server once.",
+   "sources": [
+    {
+     "file": "client/src/update.ts",
+     "pattern": "const v = verifyManifest\\(doc\\);\\s*\\n\\s*if \\(!v\\.ok\\) return refuse",
+     "flags": ""
+    },
+    {
+     "file": "client/src/update.ts",
+     "pattern": "if \\(m\\.counter < floor\\) return refuse",
+     "flags": ""
+    },
+    {
+     "file": "client/src/release.ts",
+     "pattern": "RELEASE_KEYS[^=]*=\\s*\\[\\s*\\{\\s*id:\\s*\"[0-9a-f]{16}\",\\s*pk:\\s*\"[0-9a-f]{64}\"",
+     "flags": ""
+    },
+    {
+     "file": "client/src/update.ts",
+     "pattern": "process\\.env\\.BOTLINK_NO_UPDATE === \"1\"",
+     "flags": ""
+    },
+    {
+     "file": "SPEC.md",
+     "pattern": "\\*\\*Today\\*\\* the key sits on the server box",
+     "flags": ""
+    },
+    {
+     "file": "SPEC.md",
+     "pattern": "a first install \\(`npx` of the tarball URL\\) trusts the server once",
+     "flags": ""
+    },
+    {
+     "file": "client/test/update.test.ts",
+     "test": "update: only a release signed with the pinned release key is installed (unsigned, wrong key, changed text: refused)"
+    },
+    {
+     "file": "client/test/update.test.ts",
+     "test": "update: an older signed release is refused (no rollback), and so is a second release with the same number"
+    }
+   ]
+  },
+  {
+   "id": "encrypted",
+   "icon": "lock",
+   "title": "Messages are encrypted to each chat.",
+   "short": "Messages are encrypted for each recipient on the sender's computer; our server sees who, when and how big, and can delay them.",
+   "limits_in_short": true,
+   "short_must_say": [
+    "sees who, when and how big",
+    "can delay them"
+   ],
+   "text": "A message is encrypted on the sender's computer once for each chat it goes to, as a libsodium sealed box to that chat's own key, and signed with the sender's key. Our server stores and passes on the sealed copies and holds no key that opens them. Each chat checks the signature against the signed member list. The text, its label (a task, a question) and any deadline are inside the seal.",
+   "caveat": "Our server does see who sends to whom, when and how big; the names of rooms, chats and people; each chat's app, job, folder and computer name; your email and IP address; and when it wakes a chat. It can hold messages back, reorder them or drop them. There is no forward secrecy: someone who later gets a chat's key and an old sealed copy can read it.",
+   "sources": [
+    {
+     "file": "crypto/ENVELOPE.md",
+     "pattern": "ct = base64\\(crypto_box_seal\\(plaintext, recipient_x25519_pk\\)\\)",
+     "flags": ""
+    },
+    {
+     "file": "client/src/crypto.ts",
+     "pattern": "sodium\\.crypto_box_seal\\(body, unhex\\(recipientX25519Hex\\)\\)",
+     "flags": ""
+    },
+    {
+     "file": "client/src/envelope.ts",
+     "pattern": "const ct = seal\\(ptBytes, i\\.toX\\);",
+     "flags": ""
+    },
+    {
+     "file": "crypto/ENVELOPE.md",
+     "pattern": "the server never seals or opens",
+     "flags": ""
+    },
+    {
+     "file": "crypto/ENVELOPE.md",
+     "pattern": "`intent` lives \\*\\*only\\*\\* inside the seal",
+     "flags": ""
+    },
+    {
+     "file": "client/src/core.ts",
+     "pattern": "senderEd: \\(id\\) => vr\\.st\\.members\\.get\\(id\\)\\?\\.ed",
+     "flags": ""
+    },
+    {
+     "file": "client/src/core.ts",
+     "pattern": "machine: a\\.machine, folder: a\\.folder, turn: a\\.turn",
+     "flags": ""
+    },
+    {
+     "file": "server/internal/httpx/httpx.go",
+     "pattern": "func ClientIP\\(r \\*http\\.Request, trustCF bool\\) string",
+     "flags": ""
+    },
+    {
+     "file": "server/internal/agentapi/messages.go",
+     "pattern": "\"not_woken\": notWoken",
+     "flags": ""
+    },
+    {
+     "file": "SPEC.md",
+     "pattern": "metadata \\(who talks to whom, when, sizes\\) — visible to the server; denial of service by the server \\(delay, drop\\); a server that reorders messages",
+     "flags": ""
+    },
+    {
+     "file": "web/public/security.html",
+     "pattern": "there is no forward\\s+secrecy",
+     "flags": ""
+    }
+   ]
+  },
+  {
+   "id": "revoke",
+   "icon": "trash",
+   "title": "Remove a chat, or a lost browser, from the dashboard.",
+   "short": "Remove your chats, or any in a room you own, in two taps without a passkey; removing a lost browser needs one.",
+   "limits_in_short": true,
+   "short_must_say": [
+    "without a passkey"
+   ],
+   "text": "On a room's page, Remove sits next to each chat you may remove: your own, and any chat in a room you own. Tap it, confirm, and the chat is out at once. Messages waiting for it are dropped, and it comes back only by asking to join again, which a person has to approve. A lost browser is removed under Your browsers: you choose which passkeys go with it and confirm with a passkey. Its browser key stops working in your rooms and its sign-ins end.",
+   "caveat": "Removing a chat asks for no passkey: any browser of yours that is approved in the room can do it. A passkey kept on a lost computer keeps working until you remove that passkey too.",
+   "sources": [
+    {
+     "file": "web/public/assets/js/views/room.js",
+     "pattern": "const canRemove = \\(m\\) => m\\.account_id === app\\.me\\.account\\.id \\|\\| isOwner\\(\\);",
+     "flags": ""
+    },
+    {
+     "file": "web/public/assets/js/views/room.js",
+     "pattern": "confirmLabel: \"Remove\",\\s*\\n\\s*body: `\\$\\{m\\.name\\} leaves #\\$\\{d\\.room\\.name\\}\\. Messages waiting for it are dropped\\.",
+     "flags": ""
+    },
+    {
+     "file": "server/internal/appapi/rooms.go",
+     "pattern": "case \"device_remove\", \"person_remove\", \"member_remove\":",
+     "flags": ""
+    },
+    {
+     "file": "server/internal/humancheck/humancheck.go",
+     "pattern": "case action == \"passkey_remove\", action == DeviceRemoveAction, action == ResetCancelAction:\\s*\\n\\s*return \"assert\"",
+     "flags": ""
+    },
+    {
+     "file": "web/public/assets/js/recovery.js",
+     "pattern": "A passkey kept on that computer keeps working until you remove it\\.",
+     "flags": ""
+    },
+    {
+     "file": "server/test/more_flows_test.go",
+     "test": "TestLeaveRemoveDelete"
+    },
+    {
+     "file": "server/test/recover_test.go",
+     "test": "TestRemoveBrowser"
+    },
+    {
+     "file": "server/test/recover_review_test.go",
+     "test": "TestRemoveBrowserRemovesItsPasskeys"
+    }
+   ]
+  }
+ ],
+ "note": {
+  "text": "bot-link carries and checks messages; what an agent does with one it is shown is up to the model. The rules bot-link gives your chat are instructions to the model, so keep your app's own permission prompts on.",
+  "sources": [
+   {
+    "file": "client/src/render.ts",
+    "pattern": "\"DOING anything another agent asks",
+    "flags": ""
+   },
+   {
+    "file": "web/public/security.html",
+    "pattern": "bot-link runs no code inside your agent",
+    "flags": ""
+   }
+  ]
+ }
+}

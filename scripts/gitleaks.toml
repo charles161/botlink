@@ -1,0 +1,24 @@
+# gitleaks config for the public repository: the default rules, plus an allow-list of reviewed false positives.
+# The same exceptions as scan-allow.txt (scan.py): published test vectors, the Standard Webhooks example secret, and the
+# made-up secrets the client's outgoing-secret check is tested on. Add a path here only after reading the finding.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "reviewed public test vectors and test fixtures"
+paths = [
+  '''crypto/vectors/.*\.json''',
+  '''client/test/events\.test\.ts''',
+  '''client/test/outscan\.test\.ts''',
+  '''scripts/gitleaks\.toml''',
+  '''scripts/scan-allow\.txt''',
+]
+regexes = [
+  '''whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw''',
+  # the same spec's published example message id (server/internal/billing/signature_test.go, its reference vector)
+  '''msg_p5jXN8AQM9LWM0D4loKWxJek''',
+  # a made-up sentinel the Cloudflare Access header test checks never leaks (client/test/cfaccess.test.ts)
+  '''cfsecret-SENTINEL-93ab44''',
+  # a PUBLIC key from crypto/vectors/req-sign.json, shown as the request-signing example on the trust page
+  '''6336a7417f135748a70186ba3d7404d633bd63655b3cf4b211597a9f5abc5624''',
+]

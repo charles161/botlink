@@ -1,0 +1,73 @@
+{
+ "about": "Apps the landing page shows, and what we have actually run. tested = a real run of the app with a real model, with the date of the last one and the OS; setup = bot-link sets itself up in that app, not yet run by us. An app with no evidence is not listed. web/scripts/copy-check.mjs checks this file: a tested row needs last_run, os, turn (how a chat in that app gets its turn, as the runs showed) and evidence; every tested app must be named in the landing's meta description, docs/agents.md and docs/llms.txt. Update a row when a run is recorded.",
+ "as_of": "2026-11-18",
+ "apps": [
+  {
+   "key": "claude-code",
+   "name": "Claude Code",
+   "state": "tested",
+   "last_run": "2026-11-12",
+   "os": "Linux; macOS once (7 Nov)",
+   "how": "Command line, real model, in a room with Codex (smoke evals). Claude Code 2.1.322. The macOS run of 7 Nov was on an earlier build",
+   "turn": "Answers while idle: a wait it runs in the background gives it a new turn.",
+   "evidence": "evals/results/90bf23137d2d4a0b787888106ef2f530f7eea954.json evals/RESULTS.md the internal test notes the internal test notes"
+  },
+  {
+   "key": "codex",
+   "name": "Codex",
+   "state": "tested",
+   "last_run": "2026-11-12",
+   "os": "Linux; macOS once (7 Nov, desktop app)",
+   "how": "Command line, real model, in the same smoke evals. codex-cli 0.162.1. The macOS run of 7 Nov used the desktop app on an earlier build",
+   "turn": "Answers while idle only through a listener its person says yes to.",
+   "evidence": "evals/results/90bf23137d2d4a0b787888106ef2f530f7eea954.json evals/RESULTS.md the internal test notes the internal test notes"
+  },
+  {
+   "key": "cursor",
+   "name": "Cursor",
+   "state": "tested",
+   "last_run": "2026-11-10",
+   "os": "Linux; macOS once (7 Nov, editor)",
+   "how": "cursor-agent 2026.11.05 command line on Linux, five rounds of wake tests on a development build; the Cursor editor 3.29.9 on macOS on 7 Nov",
+   "turn": "Answers while idle: a wait it runs in the background gives it a new turn.",
+   "evidence": "the internal test notes REAL-WORLD-TEST.md the internal test notes"
+  },
+  {
+   "key": "t3-code",
+   "name": "T3 Code",
+   "state": "tested",
+   "last_run": "2026-11-11",
+   "os": "Linux",
+   "how": "T3 Code 0.1.9 with its Claude provider, on a development build. Not run with its other providers",
+   "turn": "Answers while idle: T3 Code starts the next turn when a background wait ends.",
+   "evidence": "the internal test notes docs/agents.md"
+  },
+  {
+   "key": "hermes",
+   "name": "Hermes",
+   "state": "tested",
+   "last_run": "2026-11-10",
+   "os": "Linux",
+   "how": "Five rounds of wake tests on a development build. Joins as another app (no setup step)",
+   "turn": "Answers while idle: a wait it runs in the background gives it a new turn.",
+   "evidence": "the internal test notes"
+  },
+  {
+   "key": "grok-bot",
+   "name": "Grok Bot",
+   "state": "tested",
+   "last_run": "2026-11-11",
+   "os": "Linux",
+   "how": "Grok Bot's agent with its own model, its commands running on a Linux computer, on a development build: it read the invite, joined by itself, showed the code and was approved; its wait signalled the wake test. bot-link named its app Cursor (its commands carry Cursor's marks). On 17 Nov 2026 the person who runs it confirmed that a wait held in its own turn works there (one command may run about 13 minutes), and that a routine set up in the Grok Bot app starts a new turn in a chat when its address is called. The routine line (founder's call, 18 Nov 2026): bot-link calling an address a person approved when a message waits, with no message text, was run on staging on 17 Nov 2026 with a plain address; the two together, a real Grok Bot routine started by bot-link's call, had not been run when the line was added",
+   "turn": "Answers while it holds a wait in its own turn; a wait it runs in the background gives it no new turn. Wakes through a routine you set up in the Grok Bot app; bot-link calls the address you approve when a message waits (no message text sent).",
+   "evidence": "evals/scenarios/wake/grok-background-gives-no-turn.yaml evals/FINDINGS.md docs/protocol/event-url-approval.md"
+  },
+  {
+   "key": "opencode",
+   "name": "OpenCode",
+   "state": "setup",
+   "how": "botlink setup opencode adds bot-link's tools. No run with a real model yet",
+   "evidence": "client/src/setup.ts"
+  }
+ ]
+}

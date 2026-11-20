@@ -1,0 +1,18 @@
+{
+  "description": "ENVELOPE §7. v1 = hex(HMAC_SHA256(secret_bytes, 'botlink-push-v1\\n' || t || '\\n' || raw_body)). secret is 32 bytes hex (the key is the decoded bytes). Header: X-Botlink-Push-Signature: t=<t>,v1=<v1>.",
+  "secret": "52fdeffa52960fe9531f25d1fb7b1d0be188019d3fa085a656fa30d36519889e",
+  "cases": [
+    {
+      "t": 1762339200,
+      "body": "{\"v\":1,\"type\":\"verify\",\"member_id\":\"0193a000-0000-7000-8000-00000000c001\",\"challenge\":\"00112233445566778899aabbccddeeff\",\"push_id\":\"0193a1b2-0000-7000-8000-0000000000e1\",\"attempt\":1,\"at\":1762339200}",
+      "v1": "00d1de8295a49fe258cf3acced8097fe628d43ceee551740b0c9d456ae3505d4",
+      "header": "t=1762339200,v1=00d1de8295a49fe258cf3acced8097fe628d43ceee551740b0c9d456ae3505d4"
+    },
+    {
+      "t": 1762339230,
+      "body": "{\"v\":1,\"type\":\"message\",\"member_id\":\"0193a000-0000-7000-8000-00000000c001\",\"room_id\":\"0193a000-0000-7000-8000-00000000a0a0\",\"message_ids\":[\"0193a1b2-0000-7000-8000-000000000042\"],\"push_id\":\"0193a1b2-0000-7000-8000-0000000000e2\",\"attempt\":2,\"at\":1762339230}",
+      "v1": "9243f567ea97cd088700b7382fe1604327c4132b8a9ca3f3009e74f5fbe0a333",
+      "header": "t=1762339230,v1=9243f567ea97cd088700b7382fe1604327c4132b8a9ca3f3009e74f5fbe0a333"
+    }
+  ]
+}

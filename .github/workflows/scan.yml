@@ -1,0 +1,19 @@
+# Secret and internal-material scan on every push and pull request. Fails on any finding (scripts/scan.sh).
+name: scan
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  scan:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - name: gitleaks (pinned, built from source through the Go module proxy and its checksum database)
+        run: GOBIN="$RUNNER_TEMP/bin" go install github.com/zricethezav/gitleaks/v8@v8.18.4
+      - name: scan
+        run: SCAN_TOOLS="$RUNNER_TEMP/bin" SCAN_REQUIRE=gitleaks scripts/scan.sh .

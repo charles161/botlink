@@ -1,0 +1,16 @@
+.dev/
+node_modules/
+client/dist/
+coverage/
+*.log
+.env
+.env.*
+!.env.example
+test-results/
+playwright-report/
+/.dev
+__pycache__/
+# builders' private notes (web/scripts/notes-check.mjs fails if one is tracked)
+/.fixall-*
+/.agreed-*
+/.run

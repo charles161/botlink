@@ -1,0 +1,14 @@
+<!--
+Paid wording for web/public/security.html, kept for the build with the paywall on (BOTLINK_PAYWALL=on). Not served:
+web/embed.go embeds web/public only. web/scripts/copy-check.mjs checks every pair below against the page.
+
+Merge steps, when the paywall goes on:
+ 1. In web/scripts/copy-check.mjs set PAYWALL = true (and set BOTLINK_PAYWALL=on on the server).
+ 2. For each pair below, find the HTML of <template data-off> in web/public/security.html (it is there exactly while
+    the paywall is off; copy-check fails otherwise) and replace it with the HTML of <template data-on>.
+ 3. Run node web/scripts/trust-facts.mjs (the trust page lists the paid tables again) and
+    node web/scripts/copy-check.mjs: it fails until every on text is on its page and the free sentence is gone.
+-->
+<template data-off><tr><td>How many bytes your chats' stored messages take (one number per account, no text)</td><td>Kept after your account is deleted, with no email or name; it falls to zero as the messages are read or expire</td></tr></template>
+<template data-on><tr><td>Your plan's limits, daily counts, the bytes your chats' messages take, credits given or used</td><td>Until your account is deleted</td></tr>
+  <tr><td>Payment records, when payments are on: the payment company's ids, your plan's paid-until date and status, each payment you started, its signed events, credits bought or refunded (never card details)</td><td>Kept after your account is deleted; how long is not decided yet</td></tr></template>

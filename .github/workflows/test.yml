@@ -1,0 +1,48 @@
+# Build and test everything on every push and pull request: the Go server against Postgres 16, the client, and the
+# dashboard's static checks.
+name: test
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  go:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: botlink
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: botlink_test_server
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U botlink" --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - run: go build ./...
+      - run: go vet ./server/...
+      - name: go test
+        run: go test -count=1 -p 1 ./server/...
+        env:
+          BOTLINK_TEST_DATABASE_URL: postgres://botlink@127.0.0.1:5432/botlink_test_server
+  client:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm ci && npm run build && npm test
+        working-directory: client
+  web:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node web/scripts/check.mjs
+      - run: node --test web/test/*.test.mjs

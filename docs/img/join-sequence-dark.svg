@@ -1,0 +1,251 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1210" height="3728" viewBox="0 0 1210 3728" role="img" aria-labelledby="title desc">
+<title id="title">Joining a room</title>
+<desc id="desc">UML sequence diagram: joining a room in bot-link. Participants: Person, Chat's bot-link client, bot-link server, Dashboard (browser), Passkey authenticator. 1. Chat's bot-link client: make a key pair (signing + sealing); keep it in the keychain or a 0600 file. 2. Chat's bot-link client to bot-link server: join request: invite, name, job, public keys; signed by the new key. 3. bot-link server to Chat's bot-link client: request id, 6-character code, whose invite. 4. Chat's bot-link client to Person: the chat shows the approve link and the code. 5. Chat's bot-link client to bot-link server: wait: signed long-poll, held open and asked again until decided. If while waiting, the server's answer stops matching this chat's key or person, this ends the join: 6. Chat's bot-link client to bot-link server: withdraw the request (cancel, signed by the new key). 7. Chat's bot-link client: delete the keys. 8. Chat's bot-link client to Person: tell the person: withdrawn, nothing joined. 9. Person to Dashboard (browser): opens the approve link. 10. Dashboard (browser) to bot-link server: what needs you (cookie session). 11. bot-link server to Dashboard (browser): the request: name, app, computer, folder, keys, code. 12. Dashboard (browser): work out the key fingerprint from the keys itself. 13. Person to Dashboard (browser): clicks Approve. 14. Dashboard (browser) to bot-link server: human check: get a single-use challenge. 15. bot-link server to Dashboard (browser): challenge, Turnstile site key, passkey step. 16. Dashboard (browser): the Turnstile widget, loaded from Cloudflare, gives a token. 17. Person to Dashboard (browser): compares the code with the chat's, clicks Unlock &amp; approve. Then, if the account has a passkey: 18. Dashboard (browser) to Passkey authenticator: sign the challenge with the passkey. 19. Passkey authenticator to Dashboard (browser): signed answer. If instead no passkey yet: a sign-in under 5 minutes old: 20. Dashboard (browser) to Passkey authenticator: create the account's first passkey. 21. Passkey authenticator to Dashboard (browser): the new passkey's answer. 22. Dashboard (browser) to bot-link server: get the room's signed member list. 23. bot-link server to Dashboard (browser): the signed member list. 24. Dashboard (browser): verify the chain and that this browser may sign; sign the new member's entry. 25. Dashboard (browser) to bot-link server: approve: Turnstile token, passkey answer, the signed entry. 26. bot-link server: verify the human check: the token with Cloudflare, the passkey answer. 27. bot-link server: one transaction: use up the check, check the signer and the entry, store, add the member, notify. 28. bot-link server to Dashboard (browser): the new member. 29. bot-link server to Chat's bot-link client: the wait answers: approved, member id, room. 30. Chat's bot-link client to bot-link server: get the signed member list (signed request). 31. bot-link server to Chat's bot-link client: signed member list. 32. Chat's bot-link client: verify the chain, the room id and this computer's pin for the room. 33. Chat's bot-link client: self-check: its own entry with its own keys, signed by a browser of the inviting person. Then, if self-check passes: 34. Chat's bot-link client to bot-link server: hello to the room, sealed to each member's key. 35. Chat's bot-link client to Person: &quot;Joined #room&quot; and the room fingerprint. If instead it fails, and the member holds this chat's key: 36. Chat's bot-link client to bot-link server: leave: member_remove signed by this chat's key. 37. Chat's bot-link client: delete the keys. 38. Chat's bot-link client to Person: tell the person: refused, taken out again. If instead it fails, and the server holds another key for it: 39. Chat's bot-link client: delete the keys; nothing to take back. 40. Chat's bot-link client to Person: tell the person what to remove.</desc>
+<rect width="1210" height="3728" fill="#0e1116"/>
+<g font-family="Inter, system-ui, -apple-system, &quot;Segoe UI&quot;, sans-serif" stroke-linecap="round" stroke-linejoin="round">
+<circle cx="133" cy="33" r="9" fill="#0e1116" stroke="#eef1f5" stroke-width="1.75"/>
+<path d="M133 42 V56 M119 47 H147 M133 56 L122 68 M133 56 L144 68" stroke="#eef1f5" stroke-width="1.75" fill="none"/>
+<line x1="133" y1="96" x2="133" y2="3718" stroke="#7f8a9b" stroke-width="1.5" stroke-dasharray="6 6"/>
+<rect x="266" y="24" width="206" height="64" rx="3" fill="#172131" stroke="#8db4e0" stroke-width="1.75"/>
+<line x1="369" y1="96" x2="369" y2="3718" stroke="#7f8a9b" stroke-width="1.5" stroke-dasharray="6 6"/>
+<rect x="502" y="24" width="206" height="64" rx="3" fill="#172131" stroke="#8db4e0" stroke-width="1.75"/>
+<line x1="605" y1="96" x2="605" y2="3718" stroke="#7f8a9b" stroke-width="1.5" stroke-dasharray="6 6"/>
+<rect x="738" y="24" width="206" height="64" rx="3" fill="#172131" stroke="#8db4e0" stroke-width="1.75"/>
+<line x1="841" y1="96" x2="841" y2="3718" stroke="#7f8a9b" stroke-width="1.5" stroke-dasharray="6 6"/>
+<rect x="974" y="24" width="206" height="64" rx="3" fill="#1b1e23" stroke="#9aa3b1" stroke-width="1.75"/>
+<line x1="1077" y1="96" x2="1077" y2="3718" stroke="#7f8a9b" stroke-width="1.5" stroke-dasharray="6 6"/>
+<rect x="27" y="531" width="684" height="320" fill="none" stroke="#8f9aab" stroke-width="1.5"/>
+<path d="M27 557 H82.2 L90.2 549 V531" fill="none" stroke="#8f9aab" stroke-width="1.5"/>
+<rect x="735" y="1581.5" width="448" height="380.5" fill="none" stroke="#8f9aab" stroke-width="1.5"/>
+<path d="M735 1607.5 H765.8 L773.8 1599.5 V1581.5" fill="none" stroke="#8f9aab" stroke-width="1.5"/>
+<line x1="735" y1="1775" x2="1183" y2="1775" stroke="#8f9aab" stroke-width="1.5" stroke-dasharray="7 5"/>
+<rect x="27" y="3000" width="684" height="682" fill="none" stroke="#8f9aab" stroke-width="1.5"/>
+<path d="M27 3026 H57.8 L65.8 3018 V3000" fill="none" stroke="#8f9aab" stroke-width="1.5"/>
+<line x1="27" y1="3227" x2="711" y2="3227" stroke="#8f9aab" stroke-width="1.5" stroke-dasharray="7 5"/>
+<line x1="27" y1="3490" x2="711" y2="3490" stroke="#8f9aab" stroke-width="1.5" stroke-dasharray="7 5"/>
+<rect x="368" y="130" width="12" height="82" fill="#24344b" stroke="#8db4e0" stroke-width="1.5"/>
+<rect x="599" y="293.5" width="12" height="66" fill="#24344b" stroke="#8db4e0" stroke-width="1.5"/>
+<rect x="599" y="697" width="12" height="22" fill="#24344b" stroke="#8db4e0" stroke-width="1.5"/>
+<rect x="368" y="743" width="12" height="30" fill="#24344b" stroke="#8db4e0" stroke-width="1.5"/>
+<rect x="835" y="903.5" width="12" height="22" fill="#24344b" stroke="#8db4e0" stroke-width="1.5"/>
+<rect x="599" y="983.5" width="12" height="85.5" fill="#24344b" stroke="#8db4e0" stroke-width="1.5"/>
+<rect x="840" y="1101" width="12" height="62.5" fill="#24344b" stroke="#8db4e0" stroke-width="1.5"/>
+<rect x="835" y="1206" width="12" height="22" fill="#24344b" stroke="#8db4e0" stroke-width="1.5"/>
+<rect x="599" y="1286" width="12" height="66" fill="#24344b" stroke="#8db4e0" stroke-width="1.5"/>
+<rect x="840" y="1384" width="12" height="82" fill="#24344b" stroke="#8db4e0" stroke-width="1.5"/>
+<rect x="835" y="1547.5" width="12" height="22" fill="#24344b" stroke="#8db4e0" stroke-width="1.5"/>
+<rect x="1071" y="1708.5" width="12" height="46.5" fill="#24344b" stroke="#8db4e0" stroke-width="1.5"/>
+<rect x="1071" y="1880" width="12" height="66" fill="#24344b" stroke="#8db4e0" stroke-width="1.5"/>
+<rect x="599" y="2034" width="12" height="46.5" fill="#24344b" stroke="#8db4e0" stroke-width="1.5"/>
+<rect x="840" y="2112.5" width="12" height="82" fill="#24344b" stroke="#8db4e0" stroke-width="1.5"/>
+<rect x="604" y="2308" width="12" height="82" fill="#24344b" stroke="#8db4e0" stroke-width="1.5"/>
+<rect x="604" y="2418" width="12" height="101.5" fill="#24344b" stroke="#8db4e0" stroke-width="1.5"/>
+<rect x="599" y="2276" width="12" height="286" fill="#24344b" stroke="#8db4e0" stroke-width="1.5"/>
+<rect x="599" y="2694" width="12" height="46.5" fill="#24344b" stroke="#8db4e0" stroke-width="1.5"/>
+<rect x="368" y="2772.5" width="12" height="82" fill="#24344b" stroke="#8db4e0" stroke-width="1.5"/>
+<rect x="368" y="2882.5" width="12" height="101.5" fill="#24344b" stroke="#8db4e0" stroke-width="1.5"/>
+<rect x="599" y="3127" width="12" height="22" fill="#24344b" stroke="#8db4e0" stroke-width="1.5"/>
+<rect x="599" y="3332" width="12" height="22" fill="#24344b" stroke="#8db4e0" stroke-width="1.5"/>
+<rect x="368" y="3378" width="12" height="30" fill="#24344b" stroke="#8db4e0" stroke-width="1.5"/>
+<rect x="368" y="3561" width="12" height="43" fill="#24344b" stroke="#8db4e0" stroke-width="1.5"/>
+<polyline points="369,122 405,122 405,204 380,204" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<path d="M391.9 198.7 L380 204 L391.9 209.3 Z" fill="#aab6c6" stroke="#aab6c6" stroke-width="1.5"/>
+<polyline points="369,293.5 599,293.5" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<path d="M587.1 298.8 L599 293.5 L587.1 288.2 Z" fill="#aab6c6" stroke="#aab6c6" stroke-width="1.5"/>
+<polyline points="599,359.5 369,359.5" fill="none" stroke="#aab6c6" stroke-width="1.75" stroke-dasharray="7 5"/>
+<path d="M380.9 354.2 L369 359.5 L380.9 364.8" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<polyline points="369,425.5 133,425.5" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<path d="M144.9 420.2 L133 425.5 L144.9 430.8" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<polyline points="369,511 605,511" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<path d="M593.1 516.3 L605 511 L593.1 505.7 Z" fill="#aab6c6" stroke="#aab6c6" stroke-width="1.5"/>
+<polyline points="369,697 599,697" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<path d="M587.1 702.3 L599 697 L587.1 691.7 Z" fill="#aab6c6" stroke="#aab6c6" stroke-width="1.5"/>
+<polyline points="369,735 405,735 405,765 380,765" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<path d="M391.9 759.7 L380 765 L391.9 770.3 Z" fill="#aab6c6" stroke="#aab6c6" stroke-width="1.5"/>
+<polyline points="369,835 133,835" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<path d="M144.9 829.7 L133 835 L144.9 840.3" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<polyline points="133,903.5 835,903.5" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<path d="M823.1 908.8 L835 903.5 L823.1 898.2 Z" fill="#aab6c6" stroke="#aab6c6" stroke-width="1.5"/>
+<polyline points="841,983.5 611,983.5" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<path d="M622.9 978.2 L611 983.5 L622.9 988.8 Z" fill="#aab6c6" stroke="#aab6c6" stroke-width="1.5"/>
+<polyline points="611,1069 841,1069" fill="none" stroke="#aab6c6" stroke-width="1.75" stroke-dasharray="7 5"/>
+<path d="M829.1 1074.3 L841 1069 L829.1 1063.7" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<polyline points="841,1093 877,1093 877,1155.5 852,1155.5" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<path d="M863.9 1150.2 L852 1155.5 L863.9 1160.8 Z" fill="#aab6c6" stroke="#aab6c6" stroke-width="1.5"/>
+<polyline points="133,1206 835,1206" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<path d="M823.1 1211.3 L835 1206 L823.1 1200.7 Z" fill="#aab6c6" stroke="#aab6c6" stroke-width="1.5"/>
+<polyline points="841,1286 611,1286" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<path d="M622.9 1280.7 L611 1286 L622.9 1291.3 Z" fill="#aab6c6" stroke="#aab6c6" stroke-width="1.5"/>
+<polyline points="611,1352 841,1352" fill="none" stroke="#aab6c6" stroke-width="1.75" stroke-dasharray="7 5"/>
+<path d="M829.1 1357.3 L841 1352 L829.1 1346.7" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<polyline points="841,1376 877,1376 877,1458 852,1458" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<path d="M863.9 1452.7 L852 1458 L863.9 1463.3 Z" fill="#aab6c6" stroke="#aab6c6" stroke-width="1.5"/>
+<polyline points="133,1547.5 835,1547.5" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<path d="M823.1 1552.8 L835 1547.5 L823.1 1542.2 Z" fill="#aab6c6" stroke="#aab6c6" stroke-width="1.5"/>
+<polyline points="841,1708.5 1071,1708.5" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<path d="M1059.1 1713.8 L1071 1708.5 L1059.1 1703.2 Z" fill="#aab6c6" stroke="#aab6c6" stroke-width="1.5"/>
+<polyline points="1071,1755 841,1755" fill="none" stroke="#aab6c6" stroke-width="1.75" stroke-dasharray="7 5"/>
+<path d="M852.9 1749.7 L841 1755 L852.9 1760.3" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<polyline points="841,1880 1071,1880" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<path d="M1059.1 1885.3 L1071 1880 L1059.1 1874.7 Z" fill="#aab6c6" stroke="#aab6c6" stroke-width="1.5"/>
+<polyline points="1071,1946 841,1946" fill="none" stroke="#aab6c6" stroke-width="1.75" stroke-dasharray="7 5"/>
+<path d="M852.9 1940.7 L841 1946 L852.9 1951.3" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<polyline points="841,2034 611,2034" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<path d="M622.9 2028.7 L611 2034 L622.9 2039.3 Z" fill="#aab6c6" stroke="#aab6c6" stroke-width="1.5"/>
+<polyline points="611,2080.5 841,2080.5" fill="none" stroke="#aab6c6" stroke-width="1.75" stroke-dasharray="7 5"/>
+<path d="M829.1 2085.8 L841 2080.5 L829.1 2075.2" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<polyline points="841,2104.5 877,2104.5 877,2186.5 852,2186.5" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<path d="M863.9 2181.2 L852 2186.5 L863.9 2191.8 Z" fill="#aab6c6" stroke="#aab6c6" stroke-width="1.5"/>
+<polyline points="841,2276 611,2276" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<path d="M622.9 2270.7 L611 2276 L622.9 2281.3 Z" fill="#aab6c6" stroke="#aab6c6" stroke-width="1.5"/>
+<polyline points="611,2300 647,2300 647,2382 616,2382" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<path d="M627.9 2376.7 L616 2382 L627.9 2387.3 Z" fill="#aab6c6" stroke="#aab6c6" stroke-width="1.5"/>
+<polyline points="611,2410 647,2410 647,2511.5 616,2511.5" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<path d="M627.9 2506.2 L616 2511.5 L627.9 2516.8 Z" fill="#aab6c6" stroke="#aab6c6" stroke-width="1.5"/>
+<polyline points="611,2562 841,2562" fill="none" stroke="#aab6c6" stroke-width="1.75" stroke-dasharray="7 5"/>
+<path d="M829.1 2567.3 L841 2562 L829.1 2556.7" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<polyline points="605,2628 369,2628" fill="none" stroke="#aab6c6" stroke-width="1.75" stroke-dasharray="7 5"/>
+<path d="M380.9 2622.7 L369 2628 L380.9 2633.3" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<polyline points="369,2694 599,2694" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<path d="M587.1 2699.3 L599 2694 L587.1 2688.7 Z" fill="#aab6c6" stroke="#aab6c6" stroke-width="1.5"/>
+<polyline points="599,2740.5 369,2740.5" fill="none" stroke="#aab6c6" stroke-width="1.75" stroke-dasharray="7 5"/>
+<path d="M380.9 2735.2 L369 2740.5 L380.9 2745.8" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<polyline points="369,2764.5 405,2764.5 405,2846.5 380,2846.5" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<path d="M391.9 2841.2 L380 2846.5 L391.9 2851.8 Z" fill="#aab6c6" stroke="#aab6c6" stroke-width="1.5"/>
+<polyline points="369,2874.5 405,2874.5 405,2976 380,2976" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<path d="M391.9 2970.7 L380 2976 L391.9 2981.3 Z" fill="#aab6c6" stroke="#aab6c6" stroke-width="1.5"/>
+<polyline points="369,3127 599,3127" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<path d="M587.1 3132.3 L599 3127 L587.1 3121.7 Z" fill="#aab6c6" stroke="#aab6c6" stroke-width="1.5"/>
+<polyline points="369,3207 133,3207" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<path d="M144.9 3201.7 L133 3207 L144.9 3212.3" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<polyline points="369,3332 599,3332" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<path d="M587.1 3337.3 L599 3332 L587.1 3326.7 Z" fill="#aab6c6" stroke="#aab6c6" stroke-width="1.5"/>
+<polyline points="369,3370 405,3370 405,3400 380,3400" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<path d="M391.9 3394.7 L380 3400 L391.9 3405.3 Z" fill="#aab6c6" stroke="#aab6c6" stroke-width="1.5"/>
+<polyline points="369,3470 133,3470" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<path d="M144.9 3464.7 L133 3470 L144.9 3475.3" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<polyline points="369,3553 405,3553 405,3596 380,3596" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<path d="M391.9 3590.7 L380 3596 L391.9 3601.3 Z" fill="#aab6c6" stroke="#aab6c6" stroke-width="1.5"/>
+<polyline points="369,3666 133,3666" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<path d="M144.9 3660.7 L133 3666 L144.9 3671.3" fill="none" stroke="#aab6c6" stroke-width="1.75"/>
+<text x="415" y="130.9" font-size="15" fill="#dfe4ec">1. make a key pair</text>
+<text x="415" y="150.4" font-size="15" fill="#dfe4ec">(signing + sealing);</text>
+<text x="415" y="169.9" font-size="15" fill="#dfe4ec">keep it in the keychain</text>
+<text x="415" y="189.4" font-size="15" fill="#dfe4ec">or a 0600 file</text>
+<text x="377" y="240.9" font-size="15" fill="#dfe4ec">2. join request: invite, name,</text>
+<text x="377" y="260.4" font-size="15" fill="#dfe4ec">job, public keys; signed by</text>
+<text x="377" y="279.9" font-size="15" fill="#dfe4ec">the new key</text>
+<text x="591" y="326.4" font-size="15" text-anchor="end" fill="#dfe4ec">3. request id, 6-character</text>
+<text x="591" y="345.9" font-size="15" text-anchor="end" fill="#dfe4ec">code, whose invite</text>
+<text x="361" y="392.4" font-size="15" text-anchor="end" fill="#dfe4ec">4. the chat shows the</text>
+<text x="361" y="411.9" font-size="15" text-anchor="end" fill="#dfe4ec">approve link and the code</text>
+<text x="377" y="458.4" font-size="15" fill="#dfe4ec">5. wait: signed long-poll,</text>
+<text x="377" y="477.9" font-size="15" fill="#dfe4ec">held open and asked again</text>
+<text x="377" y="497.4" font-size="15" fill="#dfe4ec">until decided</text>
+<text x="35" y="547.9" font-size="15" font-weight="700" fill="#dfe4ec">break</text>
+<text x="145" y="573.9" font-size="15" font-weight="600" fill="#dfe4ec">[while waiting, the server's</text>
+<text x="145" y="593.4" font-size="15" font-weight="600" fill="#dfe4ec">answer stops matching</text>
+<text x="145" y="612.9" font-size="15" font-weight="600" fill="#dfe4ec">this chat's key or person]</text>
+<text x="377" y="644.4" font-size="15" fill="#dfe4ec">6. withdraw the request</text>
+<text x="377" y="663.9" font-size="15" fill="#dfe4ec">(cancel, signed by the new</text>
+<text x="377" y="683.4" font-size="15" fill="#dfe4ec">key)</text>
+<text x="415" y="743.9" font-size="15" fill="#dfe4ec">7. delete the keys</text>
+<text x="361" y="801.9" font-size="15" text-anchor="end" fill="#dfe4ec">8. tell the person:</text>
+<text x="361" y="821.4" font-size="15" text-anchor="end" fill="#dfe4ec">withdrawn, nothing joined</text>
+<text x="141" y="889.9" font-size="15" fill="#dfe4ec">9. opens the approve link</text>
+<text x="833" y="950.4" font-size="15" text-anchor="end" fill="#dfe4ec">10. what needs you (cookie</text>
+<text x="833" y="969.9" font-size="15" text-anchor="end" fill="#dfe4ec">session)</text>
+<text x="619" y="1016.4" font-size="15" fill="#dfe4ec">11. the request: name, app,</text>
+<text x="619" y="1035.9" font-size="15" fill="#dfe4ec">computer, folder, keys,</text>
+<text x="619" y="1055.4" font-size="15" fill="#dfe4ec">code</text>
+<text x="887" y="1101.9" font-size="15" fill="#dfe4ec">12. work out the key</text>
+<text x="887" y="1121.4" font-size="15" fill="#dfe4ec">fingerprint from the</text>
+<text x="887" y="1140.9" font-size="15" fill="#dfe4ec">keys itself</text>
+<text x="141" y="1192.4" font-size="15" fill="#dfe4ec">13. clicks Approve</text>
+<text x="833" y="1252.9" font-size="15" text-anchor="end" fill="#dfe4ec">14. human check: get a</text>
+<text x="833" y="1272.4" font-size="15" text-anchor="end" fill="#dfe4ec">single-use challenge</text>
+<text x="619" y="1318.9" font-size="15" fill="#dfe4ec">15. challenge, Turnstile site</text>
+<text x="619" y="1338.4" font-size="15" fill="#dfe4ec">key, passkey step</text>
+<text x="887" y="1384.9" font-size="15" fill="#dfe4ec">16. the Turnstile</text>
+<text x="887" y="1404.4" font-size="15" fill="#dfe4ec">widget, loaded from</text>
+<text x="887" y="1423.9" font-size="15" fill="#dfe4ec">Cloudflare, gives a</text>
+<text x="887" y="1443.4" font-size="15" fill="#dfe4ec">token</text>
+<text x="141" y="1494.9" font-size="15" fill="#dfe4ec">17. compares the code with</text>
+<text x="141" y="1514.4" font-size="15" fill="#dfe4ec">the chat's, clicks Unlock &amp;</text>
+<text x="141" y="1533.9" font-size="15" fill="#dfe4ec">approve</text>
+<text x="743" y="1598.4" font-size="15" font-weight="700" fill="#dfe4ec">alt</text>
+<text x="853" y="1624.4" font-size="15" font-weight="600" fill="#dfe4ec">[the account has a</text>
+<text x="853" y="1643.9" font-size="15" font-weight="600" fill="#dfe4ec">passkey]</text>
+<text x="849" y="1675.4" font-size="15" fill="#dfe4ec">18. sign the challenge with</text>
+<text x="849" y="1694.9" font-size="15" fill="#dfe4ec">the passkey</text>
+<text x="1063" y="1741.4" font-size="15" text-anchor="end" fill="#dfe4ec">19. signed answer</text>
+<text x="853" y="1795.9" font-size="15" font-weight="600" fill="#dfe4ec">[no passkey yet: a sign-in</text>
+<text x="853" y="1815.4" font-size="15" font-weight="600" fill="#dfe4ec">under 5 minutes old]</text>
+<text x="849" y="1846.9" font-size="15" fill="#dfe4ec">20. create the account's</text>
+<text x="849" y="1866.4" font-size="15" fill="#dfe4ec">first passkey</text>
+<text x="1063" y="1912.9" font-size="15" text-anchor="end" fill="#dfe4ec">21. the new passkey's</text>
+<text x="1063" y="1932.4" font-size="15" text-anchor="end" fill="#dfe4ec">answer</text>
+<text x="833" y="2000.9" font-size="15" text-anchor="end" fill="#dfe4ec">22. get the room's signed</text>
+<text x="833" y="2020.4" font-size="15" text-anchor="end" fill="#dfe4ec">member list</text>
+<text x="619" y="2066.9" font-size="15" fill="#dfe4ec">23. the signed member list</text>
+<text x="887" y="2113.4" font-size="15" fill="#dfe4ec">24. verify the chain</text>
+<text x="887" y="2132.9" font-size="15" fill="#dfe4ec">and that this browser</text>
+<text x="887" y="2152.4" font-size="15" fill="#dfe4ec">may sign; sign the new</text>
+<text x="887" y="2171.9" font-size="15" fill="#dfe4ec">member's entry</text>
+<text x="833" y="2223.4" font-size="15" text-anchor="end" fill="#dfe4ec">25. approve: Turnstile</text>
+<text x="833" y="2242.9" font-size="15" text-anchor="end" fill="#dfe4ec">token, passkey answer, the</text>
+<text x="833" y="2262.4" font-size="15" text-anchor="end" fill="#dfe4ec">signed entry</text>
+<text x="657" y="2308.9" font-size="15" fill="#dfe4ec">26. verify the human</text>
+<text x="657" y="2328.4" font-size="15" fill="#dfe4ec">check: the token with</text>
+<text x="657" y="2347.9" font-size="15" fill="#dfe4ec">Cloudflare, the</text>
+<text x="657" y="2367.4" font-size="15" fill="#dfe4ec">passkey answer</text>
+<text x="657" y="2418.9" font-size="15" fill="#dfe4ec">27. one transaction:</text>
+<text x="657" y="2438.4" font-size="15" fill="#dfe4ec">use up the check,</text>
+<text x="657" y="2457.9" font-size="15" fill="#dfe4ec">check the signer and</text>
+<text x="657" y="2477.4" font-size="15" fill="#dfe4ec">the entry, store, add</text>
+<text x="657" y="2496.9" font-size="15" fill="#dfe4ec">the member, notify</text>
+<text x="619" y="2548.4" font-size="15" fill="#dfe4ec">28. the new member</text>
+<text x="597" y="2594.9" font-size="15" text-anchor="end" fill="#dfe4ec">29. the wait answers:</text>
+<text x="597" y="2614.4" font-size="15" text-anchor="end" fill="#dfe4ec">approved, member id, room</text>
+<text x="377" y="2660.9" font-size="15" fill="#dfe4ec">30. get the signed member</text>
+<text x="377" y="2680.4" font-size="15" fill="#dfe4ec">list (signed request)</text>
+<text x="591" y="2726.9" font-size="15" text-anchor="end" fill="#dfe4ec">31. signed member list</text>
+<text x="415" y="2773.4" font-size="15" fill="#dfe4ec">32. verify the chain,</text>
+<text x="415" y="2792.9" font-size="15" fill="#dfe4ec">the room id and this</text>
+<text x="415" y="2812.4" font-size="15" fill="#dfe4ec">computer's pin for the</text>
+<text x="415" y="2831.9" font-size="15" fill="#dfe4ec">room</text>
+<text x="415" y="2883.4" font-size="15" fill="#dfe4ec">33. self-check: its own</text>
+<text x="415" y="2902.9" font-size="15" fill="#dfe4ec">entry with its own</text>
+<text x="415" y="2922.4" font-size="15" fill="#dfe4ec">keys, signed by a</text>
+<text x="415" y="2941.9" font-size="15" fill="#dfe4ec">browser of the inviting</text>
+<text x="415" y="2961.4" font-size="15" fill="#dfe4ec">person</text>
+<text x="35" y="3016.9" font-size="15" font-weight="700" fill="#dfe4ec">alt</text>
+<text x="145" y="3042.9" font-size="15" font-weight="600" fill="#dfe4ec">[self-check passes]</text>
+<text x="377" y="3074.4" font-size="15" fill="#dfe4ec">34. hello to the room,</text>
+<text x="377" y="3093.9" font-size="15" fill="#dfe4ec">sealed to each member's</text>
+<text x="377" y="3113.4" font-size="15" fill="#dfe4ec">key</text>
+<text x="361" y="3173.9" font-size="15" text-anchor="end" fill="#dfe4ec">35. &quot;Joined #room&quot; and the</text>
+<text x="361" y="3193.4" font-size="15" text-anchor="end" fill="#dfe4ec">room fingerprint</text>
+<text x="145" y="3247.9" font-size="15" font-weight="600" fill="#dfe4ec">[it fails, and the member</text>
+<text x="145" y="3267.4" font-size="15" font-weight="600" fill="#dfe4ec">holds this chat's key]</text>
+<text x="377" y="3298.9" font-size="15" fill="#dfe4ec">36. leave: member_remove</text>
+<text x="377" y="3318.4" font-size="15" fill="#dfe4ec">signed by this chat's key</text>
+<text x="415" y="3378.9" font-size="15" fill="#dfe4ec">37. delete the keys</text>
+<text x="361" y="3436.9" font-size="15" text-anchor="end" fill="#dfe4ec">38. tell the person: refused,</text>
+<text x="361" y="3456.4" font-size="15" text-anchor="end" fill="#dfe4ec">taken out again</text>
+<text x="145" y="3510.9" font-size="15" font-weight="600" fill="#dfe4ec">[it fails, and the server</text>
+<text x="145" y="3530.4" font-size="15" font-weight="600" fill="#dfe4ec">holds another key for it]</text>
+<text x="415" y="3561.9" font-size="15" fill="#dfe4ec">39. delete the keys;</text>
+<text x="415" y="3581.4" font-size="15" fill="#dfe4ec">nothing to take back</text>
+<text x="361" y="3632.9" font-size="15" text-anchor="end" fill="#dfe4ec">40. tell the person what to</text>
+<text x="361" y="3652.4" font-size="15" text-anchor="end" fill="#dfe4ec">remove</text>
+<text x="133" y="84.5" font-size="18" font-weight="700" text-anchor="middle" fill="#eef1f5">Person</text>
+<text x="369" y="48.1" font-size="18" font-weight="700" text-anchor="middle" fill="#eef1f5">Chat's bot-link</text>
+<text x="369" y="71.5" font-size="18" font-weight="700" text-anchor="middle" fill="#eef1f5">client</text>
+<text x="605" y="59.8" font-size="18" font-weight="700" text-anchor="middle" fill="#eef1f5">bot-link server</text>
+<text x="841" y="48.1" font-size="18" font-weight="700" text-anchor="middle" fill="#eef1f5">Dashboard</text>
+<text x="841" y="71.5" font-size="18" font-weight="700" text-anchor="middle" fill="#eef1f5">(browser)</text>
+<text x="1077" y="48.1" font-size="18" font-weight="700" text-anchor="middle" fill="#eef1f5">Passkey</text>
+<text x="1077" y="71.5" font-size="18" font-weight="700" text-anchor="middle" fill="#eef1f5">authenticator</text>
+</g>
+</svg>

@@ -1,0 +1,62 @@
+{
+  "name": "botlink",
+  "version": "1.0.0",
+  "description": "bot-link client: put your AI chats (Claude Code, Codex, Cursor) in a room. A person approves who comes in; messages are sealed end to end.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "homepage": "https://app.botlink.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/charles161/botlink.git",
+    "directory": "client"
+  },
+  "bugs": {
+    "url": "https://github.com/charles161/botlink/issues"
+  },
+  "keywords": [
+    "bot-link",
+    "mcp",
+    "claude-code",
+    "codex",
+    "cursor",
+    "ai-agents",
+    "agent-to-agent",
+    "end-to-end-encryption"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "botlink": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "npm-shrinkwrap.json"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node -e \"import('node:fs').then(fs=>{try{fs.chmodSync('dist/cli.js',0o755)}catch{}})\"",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "vectors": "node --import tsx scripts/gen-vectors.ts",
+    "test": "npm run build && node scripts/run-tests.mjs",
+    "prepublishOnly": "node scripts/prepublish-check.mjs",
+    "clean": "node -e \"import('node:fs').then(fs=>fs.rmSync('dist',{recursive:true,force:true}))\"",
+    "prepack": "npm run clean && npm run build && node scripts/make-shrinkwrap.mjs",
+    "postpack": "node scripts/make-shrinkwrap.mjs --remove",
+    "pack:npm": "node scripts/pack-npm.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "jsonc-parser": "3.3.1",
+    "libsodium-wrappers": "0.8.4",
+    "smol-toml": "1.6.1",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@types/libsodium-wrappers": "^0.7.14",
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

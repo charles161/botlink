@@ -1,0 +1,39 @@
+<!--
+Paid wording for web/public/privacy.html, kept for the build with the paywall on (BOTLINK_PAYWALL=on). Not served:
+web/embed.go embeds web/public only. web/scripts/copy-check.mjs checks every pair below against the page.
+
+Merge steps, when the paywall goes on:
+ 1. In web/scripts/copy-check.mjs set PAYWALL = true (and set BOTLINK_PAYWALL=on on the server).
+ 2. For each pair below, find the HTML of <template data-off> in web/public/privacy.html (it is there exactly while
+    the paywall is off; copy-check fails otherwise) and replace it with the HTML of <template data-on>.
+ 3. Run node web/scripts/trust-facts.mjs (the trust page lists the paid tables again) and
+    node web/scripts/copy-check.mjs: it fails until every on text is on its page and the free sentence is gone.
+-->
+<template data-off><h2 id="free">Free, with fair-use limits</h2>
+<p>bot-link is free. There is nothing to pay, and we ask for no card. So that it keeps working for everyone, these
+limits apply to every account:</p></template>
+<template data-on><h2 id="free">Fair-use limits</h2>
+<p>So that bot-link keeps working for everyone, these limits apply to every account:</p></template>
+<template data-off>because member lists and room history point at it</td></template>
+<template data-on>because member lists, room history and payment records point at it</td></template>
+<template data-off>(failed invite lookups, new accounts made, and rooms chats asked for, from that address), which</template>
+<template data-on>(failed invite lookups, new accounts made, rooms chats asked for, and calls to the payment company's event address, from that address), which</template>
+<template data-off><tr><td>How many bytes your chats' stored messages take on the server (one number per account, no text)</td><td>To apply the storage limit above</td><td>Kept after you delete your account, with no email or name; it falls to zero as the messages are read or expire</td></tr></template>
+<template data-on><tr><td>Your plan's limits, daily counts of messages sent, chats active and wakes, how many bytes your chats' messages take on the server, and credits given or used</td><td>To apply your plan's limits and show your usage</td><td>Until you delete your account</td></tr>
+  <tr><td>Payment records, when payments are on: the payment company's customer and subscription ids, your plan's state and paid-until date, each payment you started, the events the payment company sent, and credits bought or refunded</td><td>To know what you paid for</td><td>Deleting your account does not remove them. How long they are kept: [TO DECIDE: how long payment records are kept after an account is deleted, under the law that applies]</td></tr></template>
+<template data-off>a chat's wake test passes or fails, or a chat leaves or is removed from a room. Each note</template>
+<template data-on>a chat's wake test passes or fails, a chat leaves or is removed from a room,
+an account goes over a plan limit (at most once a day for each limit: which limit, rooms, chats per room or people
+per room, and the count), or a payment moves an account to another plan (the plan's name). Each note</template>
+<template data-off><li><strong>PostHog</strong>: only when product counts are on, as above.</li></template>
+<template data-on><li><strong>PostHog</strong>: only when product counts are on, as above.</li>
+  <li><strong>Payments</strong>: off unless we turn them on. When they are on, a payment company (Dodo Payments)
+    takes your card on its own page. To start a payment we give it your email address and name. bot-link never sees
+    card numbers; it keeps the payment company's ids, your plan, until when it is paid, the state of the subscription,
+    and the events the payment company sends about it.</li></template>
+<template data-off>your sign-ins, browsers and passkeys are removed.</template>
+<template data-on>your sign-ins, browsers, passkeys and usage records are removed.</template>
+<template data-off>The nightly copies of the database (14 days) stay as the
+    table says.</template>
+<template data-on>Payment records and
+    the nightly copies of the database (14 days) stay as the table says.</template>

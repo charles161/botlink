@@ -1,0 +1,65 @@
+{
+  "description": "ENVELOPE §4. header_json are the exact signed header bytes (h = base64url(header_json) no padding). sig = Ed25519(sender_seed, 'botlink-env-v1\\n' || header bytes). ct is a sealed box (random): check it OPENS with recipient.x_sk to plaintext_json and sha256(ct bytes) == header.ct_sha256. Envelope signatures are deterministic.",
+  "sender": {
+    "member": "0193a000-0000-7000-8000-00000000c001",
+    "ed_seed": "2d9500aea33d08dbb01cfd225487fc9167265dacfb645d8af76ce097ea45fffa",
+    "ed": "6336a7417f135748a70186ba3d7404d633bd63655b3cf4b211597a9f5abc5624",
+    "x": "2f9d7946b08bb5130f12c3b863b82e496a113bd2a0e67cd6ebe36c462f627d29",
+    "fp": "7f2d-7f9c-7bcf-19de"
+  },
+  "recipient": {
+    "member": "0193a000-0000-7000-8000-00000000c002",
+    "ed": "d86f46ce6137c5608e8a90a2d1b2c03ffbb10f48279eaf59aac9c34ecb618453",
+    "x_sk": "68bcf4923ee3daf84b9d019d60d8b348e06751d1c978b43622c4ddfb603cf47e",
+    "x": "06a39d4f59e008adccaba82c4034507581d2462b86418b100580bbcfe17a0d4c",
+    "fp": "f881-76f3-4396-b21e"
+  },
+  "room_id": "0193a000-0000-7000-8000-00000000a0a0",
+  "envelope": {
+    "v": 3,
+    "h": "eyJ2IjozLCJpZCI6IjAxOTNhMWIyLTAwMDAtNzAwMC04MDAwLTAwMDAwMDAwMDA0MiIsInJvb20iOiIwMTkzYTAwMC0wMDAwLTcwMDAtODAwMC0wMDAwMDAwMGEwYTAiLCJmcm9tIjoiMDE5M2EwMDAtMDAwMC03MDAwLTgwMDAtMDAwMDAwMDBjMDAxIiwiZnJvbV9mcCI6IjdmMmQtN2Y5Yy03YmNmLTE5ZGUiLCJ0byI6IjAxOTNhMDAwLTAwMDAtNzAwMC04MDAwLTAwMDAwMDAwYzAwMiIsInRvX2ZwIjoiZjg4MS03NmYzLTQzOTYtYjIxZSIsInNjb3BlIjoibWVtYmVyIiwiaW5fcmVwbHlfdG8iOm51bGwsInNlbnRfYXQiOjE3NjIzMzkyMDAsImV4cGlyZXNfYXQiOjE3NjI5NDQwMDAsImN0X3NoYTI1NiI6Ijk4NGNkMDYxZGZhOWZlZTdhZjVkNTJlN2RmZDRiYzFkNDEwMjE5MWVmMjBmYTk5YTA4ODY1M2M0MWEzZGUwYWMifQ",
+    "ct": "UvU4fYC9fHVtdeZMiFDrhjxVpwmGU98M5qZm/EKtZXP+IRyXD5g6+o9O6ArMZW1f90w2JQX52olT2TM77lKRrQEuFqWFi+KrTCmEDa4I1/dNLForvClgsStcuct7/QHpAL8DnATYjnnsoxclp2/RH7y/EkOA1zD1dN6JLW0v9bVHzFRgzqQ3VTMkZAjbXGqJwdg3HOr1rK+N6+/q7J0g90u2xylvC6C2VuVIWDF8w+xk1Qqnahe7MW76RyQ4uCcwyAhl6MEFhRlRzkNujfuqIMRZ7JWlUNtsGdIkPAXdNvhO59Uy7a52/fFSb67aySk016yAJ64xdA4mNLDeAZ/9ZSGy2tUQa4jCI8ynKC32LK6ussikFgMpbetVYsEsf3iSujW1GJ++qicYWAKsJnqc8OoSYX2EUUK5VykDuQ0n5K7M1JGyPkdr+8h9DITJv4Gyo+S68zcdHoHuYbgVuq5mDWyTQuVI1qQ1r0cHlJLdCT5YUCUUIX3NnwV7WsLLeUJFZp726pdgflFaWWY3Y98BnQ2uDQ==",
+    "sig": "3a21b6b298dd4ca6f775e88efdb35c97ae3ed7b64ca3744d7bfea89fee95345450b44deb05103eb05bcdb053c2ed1cde6d22246f4870a8ce87dae583017c7705"
+  },
+  "header_json": "{\"v\":3,\"id\":\"0193a1b2-0000-7000-8000-000000000042\",\"room\":\"0193a000-0000-7000-8000-00000000a0a0\",\"from\":\"0193a000-0000-7000-8000-00000000c001\",\"from_fp\":\"7f2d-7f9c-7bcf-19de\",\"to\":\"0193a000-0000-7000-8000-00000000c002\",\"to_fp\":\"f881-76f3-4396-b21e\",\"scope\":\"member\",\"in_reply_to\":null,\"sent_at\":1762339200,\"expires_at\":1762944000,\"ct_sha256\":\"984cd061dfa9fee7af5d52e7dfd4bc1d4102191ef20fa99a088653c41a3de0ac\"}",
+  "signed_bytes_b64": "Ym90bGluay1lbnYtdjEKeyJ2IjozLCJpZCI6IjAxOTNhMWIyLTAwMDAtNzAwMC04MDAwLTAwMDAwMDAwMDA0MiIsInJvb20iOiIwMTkzYTAwMC0wMDAwLTcwMDAtODAwMC0wMDAwMDAwMGEwYTAiLCJmcm9tIjoiMDE5M2EwMDAtMDAwMC03MDAwLTgwMDAtMDAwMDAwMDBjMDAxIiwiZnJvbV9mcCI6IjdmMmQtN2Y5Yy03YmNmLTE5ZGUiLCJ0byI6IjAxOTNhMDAwLTAwMDAtNzAwMC04MDAwLTAwMDAwMDAwYzAwMiIsInRvX2ZwIjoiZjg4MS03NmYzLTQzOTYtYjIxZSIsInNjb3BlIjoibWVtYmVyIiwiaW5fcmVwbHlfdG8iOm51bGwsInNlbnRfYXQiOjE3NjIzMzkyMDAsImV4cGlyZXNfYXQiOjE3NjI5NDQwMDAsImN0X3NoYTI1NiI6Ijk4NGNkMDYxZGZhOWZlZTdhZjVkNTJlN2RmZDRiYzFkNDEwMjE5MWVmMjBmYTk5YTA4ODY1M2M0MWEzZGUwYWMifQ==",
+  "plaintext_json": "{\"v\":3,\"id\":\"0193a1b2-0000-7000-8000-000000000042\",\"room\":\"0193a000-0000-7000-8000-00000000a0a0\",\"from\":\"0193a000-0000-7000-8000-00000000c001\",\"to\":\"0193a000-0000-7000-8000-00000000c002\",\"scope\":\"member\",\"in_reply_to\":null,\"intent\":\"task\",\"text\":\"Deploy commit a1b2c3 to staging, then smoke-test /checkout. café — ok\",\"needed_by\":null,\"resend_of\":null}",
+  "plaintext": {
+    "v": 3,
+    "id": "0193a1b2-0000-7000-8000-000000000042",
+    "room": "0193a000-0000-7000-8000-00000000a0a0",
+    "from": "0193a000-0000-7000-8000-00000000c001",
+    "to": "0193a000-0000-7000-8000-00000000c002",
+    "scope": "member",
+    "in_reply_to": null,
+    "intent": "task",
+    "text": "Deploy commit a1b2c3 to staging, then smoke-test /checkout. café — ok",
+    "needed_by": null,
+    "resend_of": null
+  },
+  "invalid": [
+    {
+      "name": "tampered_header",
+      "why": "to_fp changed after signing: signature must fail",
+      "envelope": {
+        "v": 3,
+        "h": "eyJ2IjozLCJpZCI6IjAxOTNhMWIyLTAwMDAtNzAwMC04MDAwLTAwMDAwMDAwMDA0MiIsInJvb20iOiIwMTkzYTAwMC0wMDAwLTcwMDAtODAwMC0wMDAwMDAwMGEwYTAiLCJmcm9tIjoiMDE5M2EwMDAtMDAwMC03MDAwLTgwMDAtMDAwMDAwMDBjMDAxIiwiZnJvbV9mcCI6IjdmMmQtN2Y5Yy03YmNmLTE5ZGUiLCJ0byI6IjAxOTNhMDAwLTAwMDAtNzAwMC04MDAwLTAwMDAwMDAwYzAwMiIsInRvX2ZwIjoiMDAwMC0wMDAwLTAwMDAtMDAwMCIsInNjb3BlIjoibWVtYmVyIiwiaW5fcmVwbHlfdG8iOm51bGwsInNlbnRfYXQiOjE3NjIzMzkyMDAsImV4cGlyZXNfYXQiOjE3NjI5NDQwMDAsImN0X3NoYTI1NiI6Ijk4NGNkMDYxZGZhOWZlZTdhZjVkNTJlN2RmZDRiYzFkNDEwMjE5MWVmMjBmYTk5YTA4ODY1M2M0MWEzZGUwYWMifQ",
+        "ct": "UvU4fYC9fHVtdeZMiFDrhjxVpwmGU98M5qZm/EKtZXP+IRyXD5g6+o9O6ArMZW1f90w2JQX52olT2TM77lKRrQEuFqWFi+KrTCmEDa4I1/dNLForvClgsStcuct7/QHpAL8DnATYjnnsoxclp2/RH7y/EkOA1zD1dN6JLW0v9bVHzFRgzqQ3VTMkZAjbXGqJwdg3HOr1rK+N6+/q7J0g90u2xylvC6C2VuVIWDF8w+xk1Qqnahe7MW76RyQ4uCcwyAhl6MEFhRlRzkNujfuqIMRZ7JWlUNtsGdIkPAXdNvhO59Uy7a52/fFSb67aySk016yAJ64xdA4mNLDeAZ/9ZSGy2tUQa4jCI8ynKC32LK6ussikFgMpbetVYsEsf3iSujW1GJ++qicYWAKsJnqc8OoSYX2EUUK5VykDuQ0n5K7M1JGyPkdr+8h9DITJv4Gyo+S68zcdHoHuYbgVuq5mDWyTQuVI1qQ1r0cHlJLdCT5YUCUUIX3NnwV7WsLLeUJFZp726pdgflFaWWY3Y98BnQ2uDQ==",
+        "sig": "3a21b6b298dd4ca6f775e88efdb35c97ae3ed7b64ca3744d7bfea89fee95345450b44deb05103eb05bcdb053c2ed1cde6d22246f4870a8ce87dae583017c7705"
+      },
+      "expect": "bad_signature"
+    },
+    {
+      "name": "wrong_sender_key",
+      "why": "verify with member_2's ed instead of member_1's: must fail",
+      "envelope": {
+        "v": 3,
+        "h": "eyJ2IjozLCJpZCI6IjAxOTNhMWIyLTAwMDAtNzAwMC04MDAwLTAwMDAwMDAwMDA0MiIsInJvb20iOiIwMTkzYTAwMC0wMDAwLTcwMDAtODAwMC0wMDAwMDAwMGEwYTAiLCJmcm9tIjoiMDE5M2EwMDAtMDAwMC03MDAwLTgwMDAtMDAwMDAwMDBjMDAxIiwiZnJvbV9mcCI6IjdmMmQtN2Y5Yy03YmNmLTE5ZGUiLCJ0byI6IjAxOTNhMDAwLTAwMDAtNzAwMC04MDAwLTAwMDAwMDAwYzAwMiIsInRvX2ZwIjoiZjg4MS03NmYzLTQzOTYtYjIxZSIsInNjb3BlIjoibWVtYmVyIiwiaW5fcmVwbHlfdG8iOm51bGwsInNlbnRfYXQiOjE3NjIzMzkyMDAsImV4cGlyZXNfYXQiOjE3NjI5NDQwMDAsImN0X3NoYTI1NiI6Ijk4NGNkMDYxZGZhOWZlZTdhZjVkNTJlN2RmZDRiYzFkNDEwMjE5MWVmMjBmYTk5YTA4ODY1M2M0MWEzZGUwYWMifQ",
+        "ct": "UvU4fYC9fHVtdeZMiFDrhjxVpwmGU98M5qZm/EKtZXP+IRyXD5g6+o9O6ArMZW1f90w2JQX52olT2TM77lKRrQEuFqWFi+KrTCmEDa4I1/dNLForvClgsStcuct7/QHpAL8DnATYjnnsoxclp2/RH7y/EkOA1zD1dN6JLW0v9bVHzFRgzqQ3VTMkZAjbXGqJwdg3HOr1rK+N6+/q7J0g90u2xylvC6C2VuVIWDF8w+xk1Qqnahe7MW76RyQ4uCcwyAhl6MEFhRlRzkNujfuqIMRZ7JWlUNtsGdIkPAXdNvhO59Uy7a52/fFSb67aySk016yAJ64xdA4mNLDeAZ/9ZSGy2tUQa4jCI8ynKC32LK6ussikFgMpbetVYsEsf3iSujW1GJ++qicYWAKsJnqc8OoSYX2EUUK5VykDuQ0n5K7M1JGyPkdr+8h9DITJv4Gyo+S68zcdHoHuYbgVuq5mDWyTQuVI1qQ1r0cHlJLdCT5YUCUUIX3NnwV7WsLLeUJFZp726pdgflFaWWY3Y98BnQ2uDQ==",
+        "sig": "3a21b6b298dd4ca6f775e88efdb35c97ae3ed7b64ca3744d7bfea89fee95345450b44deb05103eb05bcdb053c2ed1cde6d22246f4870a8ce87dae583017c7705"
+      },
+      "verify_with": "d86f46ce6137c5608e8a90a2d1b2c03ffbb10f48279eaf59aac9c34ecb618453",
+      "expect": "bad_signature"
+    }
+  ]
+}

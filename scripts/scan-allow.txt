@@ -1,0 +1,29 @@
+# Reviewed exceptions of scan.py: <rule> <path, folder/ or *> <the exact match, or @line for one line of that file>.
+# Add one only after reading the finding, with why. Keep it short.
+
+# The Standard Webhooks specification's published example secret, quoted by the signature tests.
+secret:webhook-signing-secret * whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw
+secret:assignment client/test/events.test.ts secret: "whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw
+# The client's outgoing-secret check is tested on made-up secrets (AWS's documented example key, a sample JWT, key headers).
+secret:private-key client/test/outscan.test.ts -----BEGIN OPENSSH PRIVATE KEY-----
+secret:private-key client/test/outscan.test.ts -----BEGIN RSA PRIVATE KEY-----
+secret:aws-access-key client/test/outscan.test.ts AKIAIOSFODNN7EXAMPLE
+secret:jwt client/test/outscan.test.ts eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U
+secret:assignment client/test/outscan.test.ts apiKey: 9f8e7d6c5b4a39281706
+# Published test vectors (fixed seeds), not secrets.
+secret:assignment crypto/vectors/push.json secret": "52fdeffa52960fe9531f25d1fb7b1d0be188019d3fa085a656fa30d36519889e
+
+# Made-up addresses in tests, fixtures and examples (and a URL with credentials the source-link test refuses).
+email-domain * acme.dev
+email-domain * lumen.ai
+email-domain * zeta.dev
+email-domain * x.dev
+email-domain * paths.dev
+email-domain * else.dev
+email-domain * beta.io
+email-domain * evil.io
+email-domain * db.internal
+email-domain server/internal/adminapi/metrics_test.go gmail.com
+email-domain client/test/outscan.test.ts github.com
+email-domain server/internal/config/source_test.go github.com
+

@@ -1,0 +1,41 @@
+{
+  "description": "fp16(bytes) = first 16 hex of sha256(bytes) grouped 4-4-4-4. member: utf8(lower(ed)|lower(x)); device: utf8('botlink-device-v1|'+lower(pk)); room: decoded genesis entry bytes (see roster.json).",
+  "fp16": [
+    {
+      "input_utf8": "",
+      "fp": "e3b0-c442-98fc-1c14"
+    },
+    {
+      "input_utf8": "abc",
+      "fp": "ba78-16bf-8f01-cfea"
+    }
+  ],
+  "member": [
+    {
+      "ed": "84be8be73f94f64bb0e73853e635ea2507ec94708c880eed40bc40d08b480d61",
+      "x": "37a32c628eb33fb767bfb4f00927522ddda6bd9e390a07110ab336eeae64515d",
+      "input_utf8": "84be8be73f94f64bb0e73853e635ea2507ec94708c880eed40bc40d08b480d61|37a32c628eb33fb767bfb4f00927522ddda6bd9e390a07110ab336eeae64515d",
+      "fp": "060d-9f30-ae23-a5dc"
+    },
+    {
+      "ed": "2f27f29684ac31054a8ee2226add3fbc7ee359d43123d03227282d46fad506a4",
+      "x": "71ea4af26abd720ba77fea591dac9387609996963811a90b13857cb6efcaf915",
+      "input_utf8": "2f27f29684ac31054a8ee2226add3fbc7ee359d43123d03227282d46fad506a4|71ea4af26abd720ba77fea591dac9387609996963811a90b13857cb6efcaf915",
+      "fp": "2f4e-2382-f1ee-8e95"
+    },
+    {
+      "ed": "2F27F29684AC31054A8EE2226ADD3FBC7EE359D43123D03227282D46FAD506A4",
+      "x": "71EA4AF26ABD720BA77FEA591DAC9387609996963811A90B13857CB6EFCAF915",
+      "note": "uppercase input is lowercased first",
+      "fp": "2f4e-2382-f1ee-8e95"
+    }
+  ],
+  "device": [
+    {
+      "pk": "da32e072b63a9dcd455fa943a348a4975d3700ced0890b6c5b8fb1f4e3f8ce4a",
+      "input_utf8": "botlink-device-v1|da32e072b63a9dcd455fa943a348a4975d3700ced0890b6c5b8fb1f4e3f8ce4a",
+      "fp": "fae2-6a90-331f-e2f0"
+    }
+  ],
+  "base32_alphabet": "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"
+}

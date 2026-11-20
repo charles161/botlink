@@ -1,0 +1,43 @@
+# bot-link: the server and Postgres 16 on one machine.   cp .env.example .env, edit it, then: docker compose up -d
+# Every setting comes from .env (see .env.example and SELF-HOSTING.md). The server applies database migrations
+# itself when it starts. Put a TLS reverse proxy in front for anything but a local trial (SELF-HOSTING.md).
+name: botlink
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: botlink
+      POSTGRES_DB: botlink
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env (openssl rand -hex 24)}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U botlink -d botlink"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  server:
+    build: .
+    image: botlink-server:local
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      BOTLINK_DATABASE_URL: postgres://botlink:${POSTGRES_PASSWORD}@db:5432/botlink?sslmode=disable
+      BOTLINK_ADDR: ":8811"
+    ports:
+      # loopback only by default: the reverse proxy on this machine reaches it; set BOTLINK_PUBLISH to change
+      - "${BOTLINK_PUBLISH:-127.0.0.1:8811}:8811"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8811/readyz"]
+      interval: 10s
+      timeout: 3s
+      start_period: 20s
+      retries: 5
+
+volumes:
+  pgdata:

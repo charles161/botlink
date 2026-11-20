@@ -1,0 +1,1101 @@
+{
+ "about": "bot-link's architecture as data. docs/architecture/render.mjs draws docs/img/*.svg and docs/architecture/README-embed.md from this file, and checks that every source below still matches the code (web/scripts/check.mjs runs the check). Change a box or an arrow here, with the code that proves it, then run: node docs/architecture/render.mjs",
+ "component": {
+  "title": "bot-link architecture",
+  "desc": "UML component diagram: the processes of bot-link, where each key is kept, and what travels between them.",
+  "size": [1250, 1760],
+  "groups": [
+   {"id": "computer", "label": "The person's computer", "kind": "node", "at": [40, 200, 450, 440]},
+   {"id": "browser", "label": "The person's browser", "kind": "node", "at": [540, 200, 360, 240]},
+   {"id": "edge", "label": "TLS endpoint", "kind": "node", "at": [40, 760, 620, 180]},
+   {"id": "servermachine", "label": "The server machine", "kind": "node", "at": [40, 1010, 620, 500]},
+   {"id": "deploymachine", "label": "Release signing, hosted service (on its server machine today)", "kind": "node", "at": [40, 1540, 620, 200]},
+   {"id": "external", "label": "External services", "kind": "boundary", "at": [966, 200, 270, 1300]}
+  ],
+  "components": [
+   {
+    "id": "npm",
+    "label": "npm registry",
+    "sub": ["a release's dependencies"],
+    "kind": "external",
+    "group": null,
+    "at": [16, 24, 230, 104],
+    "sources": [
+     {"file": "client/src/update.ts", "text": "const args = locked ? [\"ci\", \"--omit=dev\", \"--ignore-scripts\", \"--no-audit\", \"--no-fund\"]"},
+     {"file": "client/src/update.ts", "text": "const i = spawnSync(npm, args, { cwd: pkg, encoding: \"utf-8\", timeout: 300_000 });"}
+    ]
+   },
+   {
+    "id": "provider",
+    "label": "AI model provider",
+    "sub": ["used by the AI app;", "outside bot-link"],
+    "kind": "external",
+    "group": null,
+    "at": [270, 24, 230, 104],
+    "sources": [
+     {"file": "client/src/hooks.ts", "text": "{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":…}}"},
+     {"file": "client/src/mcp.ts", "text": "Tool output is plain text in SPEC §1 UI words only. Other agents' text is always fenced."}
+    ]
+   },
+   {
+    "id": "person",
+    "label": "Person",
+    "kind": "actor",
+    "group": null,
+    "at": [700, 24, 80, 120],
+    "sources": [
+     {"file": "server/internal/appapi/app.go", "text": "mux.Handle(\"POST /app/v1/join-requests/{id}/approve\", a.sess(a.postJoinApprove))"},
+     {"file": "server/internal/agentapi/auth.go", "text": "func (a *API) Routes(m *http.ServeMux) {"}
+    ]
+   },
+   {
+    "id": "authenticator",
+    "label": "Passkey authenticator",
+    "sub": ["Touch ID, Windows Hello,", "a phone or a security key"],
+    "kind": "device",
+    "group": null,
+    "at": [860, 30, 300, 110],
+    "sources": [
+     {"file": "web/public/assets/js/humancheck.js", "text": "await navigator.credentials.get({ publicKey: requestOptions("},
+     {"file": "server/internal/humancheck/humancheck.go", "text": "wa, err := webauthn.New(&webauthn.Config{RPDisplayName: \"bot-link\", RPID: rpID, RPOrigins: []string{origin}})"}
+    ]
+   },
+   {
+    "id": "app",
+    "label": "AI app",
+    "sub": ["Claude Code, Codex, Cursor", "or another app"],
+    "kind": "component",
+    "group": "computer",
+    "at": [130, 250, 330, 96],
+    "sources": [
+     {"file": "client/src/session.ts", "text": "export function detectApp("},
+     {"file": "client/src/watch.ts", "text": "if (app === \"codex\") return { cmd: process.env.BOTLINK_CODEX_BIN || \"codex\""}
+    ]
+   },
+   {
+    "id": "client",
+    "label": "bot-link client",
+    "sub": ["MCP server, command line, hooks, listener;", "watch runs as a user service.", "Keys: macOS Keychain, Linux Secret", "Service, else ~/.botlink/keys (0600)"],
+    "kind": "component",
+    "group": "computer",
+    "at": [70, 470, 390, 140],
+    "sources": [
+     {"file": "client/src/mcp.ts", "text": "await server.connect(new StdioServerTransport());"},
+     {"file": "client/src/service.ts", "text": "The `botlink watch` user service (systemd user unit / launchd agent)"},
+     {"file": "client/src/secrets.ts", "text": "if (platform() === \"darwin\") return \"keychain\";"},
+     {"file": "client/src/secrets.ts", "text": "if (platform() === \"linux\" && haveSecretTool()) return \"libsecret\";"},
+     {"file": "client/src/secrets.ts", "text": "return join(homeDir(), \"keys\", `${account}.json`);"}
+    ]
+   },
+   {
+    "id": "dashboard",
+    "label": "Dashboard (web app)",
+    "sub": ["Served by the bot-link server", "Its signing key (IndexedDB) cannot", "be exported; any script in the page", "can use it to sign"],
+    "kind": "component",
+    "group": "browser",
+    "at": [560, 250, 320, 150],
+    "sources": [
+     {"file": "web/embed.go", "text": "//go:embed all:public"},
+     {"file": "web/public/assets/js/crypto.js", "text": "const k = await crypto.subtle.generateKey({ name: \"Ed25519\" }, false, [\"sign\", \"verify\"]);"},
+     {"file": "web/public/assets/js/crypto.js", "text": "const r = indexedDB.open(DB, 1);"},
+     {"file": "web/public/assets/js/humancheck.js", "text": "sc.src = \"https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit\";"}
+    ]
+   },
+   {
+    "id": "proxy",
+    "label": "Reverse proxy",
+    "sub": ["TLS ends here, and what passes is readable here.", "Hosted service: Cloudflare's edge, then its tunnel.", "Your own server: the proxy you run."],
+    "kind": "component",
+    "group": "edge",
+    "at": [70, 810, 560, 110],
+    "sources": [
+     {"file": "server/internal/config/config.go", "text": "func (c *Config) SecureCookies() bool { return c.Env != \"dev\" }"},
+     {"file": "server/internal/pages/hosts.go", "text": "the tunnel passes the visitor's Host through"},
+     {"file": "deploy/tunnel-config.sh", "text": "  - hostname: $APP_HOST\n    service: $MAIN"}
+    ]
+   },
+   {
+    "id": "server",
+    "label": "bot-link server",
+    "sub": ["One Go binary: agent API, app API, pages,", "wake bus, push and event workers, sweeper"],
+    "kind": "component",
+    "group": "servermachine",
+    "at": [70, 1060, 560, 150],
+    "sources": [
+     {"file": "server/internal/server/server.go", "text": "h = pages.HostSplit(cfg, h)"},
+     {"file": "server/internal/server/server.go", "text": "go func() { defer s.wg.Done(); s.Sweeper.Run(ctx) }()"},
+     {"file": "server/internal/server/server.go", "text": "go func() { defer s.wg.Done(); s.Events.Run(ctx) }()"}
+    ]
+   },
+   {
+    "id": "postgres",
+    "label": "Postgres",
+    "sub": ["The server's state; message", "text as sealed copies"],
+    "kind": "database",
+    "group": "servermachine",
+    "at": [70, 1260, 250, 100],
+    "sources": [
+     {"file": "server/internal/server/server.go", "text": "pool, err := pgxpool.NewWithConfig(ctx, pcfg)"},
+     {"file": "SPEC.md", "text": "Every row that matters lives in Postgres"},
+     {"file": "crypto/ENVELOPE.md", "text": "server Go stdlib `crypto/ed25519` (verify only; the server never seals or opens)"}
+    ]
+   },
+   {
+    "id": "release",
+    "label": "Client release",
+    "sub": ["Tarball + signed manifest"],
+    "kind": "artifact",
+    "group": "servermachine",
+    "at": [380, 1260, 250, 80],
+    "sources": [
+     {"file": "server/internal/pages/download.go", "text": "f, err := os.Open(filepath.Join(filepath.Dir(real), \"botlink.manifest.json\"))"}
+    ]
+   },
+   {
+    "id": "signer",
+    "label": "Release signing",
+    "sub": ["Holds the release key; signs", "at each deploy"],
+    "kind": "component",
+    "group": "deploymachine",
+    "at": [330, 1600, 300, 90],
+    "sources": [
+     {"file": "deploy/release-sign.mjs", "text": "The key lives OUTSIDE the repository and outside anything that is deployed"},
+     {"file": "deploy/lib/build.sh", "text": "node \"$tool\" sign --tarball \"$dir/dl/botlink.tgz\""}
+    ]
+   },
+   {
+    "id": "oauth",
+    "label": "GitHub and Google",
+    "sub": ["Sign-in (OAuth 2, PKCE)"],
+    "kind": "external",
+    "group": "external",
+    "at": [980, 250, 230, 100],
+    "sources": [
+     {"file": "server/internal/auth/auth.go", "text": "g.AuthURLBase = \"https://github.com/login/oauth/authorize\""},
+     {"file": "server/internal/auth/auth.go", "text": "g.AuthURLBase = \"https://accounts.google.com/o/oauth2/v2/auth\""}
+    ]
+   },
+   {
+    "id": "turnstile",
+    "label": "Cloudflare Turnstile",
+    "sub": ["Required: a bot check", "before every approval"],
+    "kind": "external",
+    "group": "external",
+    "at": [980, 430, 200, 140],
+    "sources": [
+     {"file": "server/internal/config/config.go", "text": "if c.HumanCheck == \"real\" && (c.TurnstileSiteKey == \"\" || c.TurnstileSecret == \"\") {"},
+     {"file": "server/internal/humancheck/humancheck.go", "text": "return nil, nil, failed(\"turnstile_missing\")"}
+    ]
+   },
+   {
+    "id": "push",
+    "label": "Push receiver",
+    "sub": ["an always-on member's URL"],
+    "kind": "external",
+    "group": "external",
+    "at": [980, 1120, 240, 100],
+    "sources": [
+     {"file": "server/internal/push/push.go", "text": "\"X-Botlink-Push-Signature\": Signature(secret, now, body),"}
+    ]
+   },
+   {
+    "id": "events",
+    "label": "Events receiver",
+    "sub": ["a member's bot-link", "Events URL"],
+    "kind": "external",
+    "group": "external",
+    "at": [980, 1240, 240, 110],
+    "sources": [
+     {"file": "server/internal/events/worker.go", "text": "\"webhook-signature\":     SignAll(secrets, webhookID, ts, body),"}
+    ]
+   },
+   {
+    "id": "posthog",
+    "label": "PostHog",
+    "sub": ["product analytics"],
+    "kind": "external",
+    "group": "external",
+    "at": [980, 1380, 240, 100],
+    "sources": [
+     {"file": "server/internal/analytics/analytics.go", "text": "url: strings.TrimRight(cfg.Host, \"/\") + \"/batch/\""},
+     {"file": "server/internal/server/server.go", "text": "s.Analytics = analytics.New(analytics.Config{Key: cfg.PostHogKey, Host: cfg.PostHogHost, HashKey: cfg.AnalyticsHashKey})"}
+    ]
+   }
+  ],
+  "notes": [
+   {
+    "id": "note-release",
+    "attach": "release",
+    "text": "Served at /dl only when BOTLINK_CLIENT_TGZ is set. Hosted service: the tunnel sends /dl to a separate static file server.",
+    "at": [70, 1380, 320, 100],
+    "link": [[390, 1420], [430, 1420], [430, 1340]],
+    "sources": [
+     {"file": "server/internal/server/server.go", "text": "if cfg.ClientTGZ != \"\" {"},
+     {"file": "deploy/tunnel-config.sh", "text": "    path: ^/dl/"}
+    ]
+   },
+   {
+    "id": "note-signer",
+    "attach": "signer",
+    "text": "Clients take only releases signed with the key pinned in client/src/release.ts; another key needs a changed pin and a client you build.",
+    "at": [56, 1590, 254, 130],
+    "link": [[310, 1645], [330, 1645]],
+    "sources": [
+     {"file": "client/src/release.ts", "text": "export const RELEASE_KEYS: { id: string; pk: string }[] = ["},
+     {"file": "client/test/update.test.ts", "test": "update: only a release signed with the pinned release key is installed (unsigned, wrong key, changed text: refused)"}
+    ]
+   }
+  ],
+  "legend": {
+   "at": [700, 1540, 536, 200],
+   "items": [
+    {"symbol": "arrow", "text": "Solid arrow: the side it starts from opens the exchange; the label says what travels."},
+    {"symbol": "dashed", "text": "Dashed line: a note about the box it touches."},
+    {"symbol": "dagger", "text": "Its sources are in deploy/, which the public copy of the repository leaves out; the check there lists it as not checkable."}
+   ]
+  },
+  "connectors": [
+   {
+    "id": "person-app",
+    "from": "person",
+    "to": "app",
+    "label": "talks to the chat and reads its code",
+    "mechanism": "the chat's own window",
+    "route": [[700, 70], [520, 70], [520, 300], [460, 300]],
+    "label_at": [528, 26, "start", 160],
+    "sources": [
+     {"file": "client/src/core.ts", "text": "Approve in the browser: ${link}\\nCode ${groupCode(view.match_code)}"}
+    ]
+   },
+   {
+    "id": "person-dashboard",
+    "from": "person",
+    "to": "dashboard",
+    "label": "signs in, compares the code, approves",
+    "mechanism": "the browser",
+    "route": [[740, 144], [740, 250]],
+    "label_at": [728, 150, "end", 160],
+    "sources": [
+     {"file": "web/public/assets/js/needs.js", "text": "with the code shown in that chat."}
+    ]
+   },
+   {
+    "id": "dashboard-authenticator",
+    "from": "dashboard",
+    "to": "authenticator",
+    "label": "passkey check (WebAuthn)",
+    "mechanism": "WebAuthn",
+    "route": [[870, 250], [870, 140]],
+    "label_at": [882, 150, "start", 200],
+    "sources": [
+     {"file": "web/public/assets/js/humancheck.js", "text": "await navigator.credentials.get({ publicKey: requestOptions("}
+    ]
+   },
+   {
+    "id": "app-provider",
+    "from": "app",
+    "to": "provider",
+    "label": "decrypted messages in the chat's context",
+    "mechanism": "the AI app's own connection",
+    "route": [[360, 250], [360, 128]],
+    "label_at": [372, 136, "start", 140],
+    "sources": [
+     {"file": "client/src/hooks.ts", "text": "The rule (J7f-3): a message is acked `shown` only after its text was handed to the harness through a channel that"},
+     {"file": "client/src/hooks.ts", "text": "reaches the model"}
+    ]
+   },
+   {
+    "id": "app-client",
+    "from": "app",
+    "to": "client",
+    "label": "starts the MCP server and runs hook commands",
+    "mechanism": "MCP stdio, hook commands",
+    "route": [[150, 346], [150, 470]],
+    "label_at": [162, 356, "start", 140],
+    "sources": [
+     {"file": "client/src/mcp.ts", "text": "await server.connect(new StdioServerTransport());"},
+     {"file": "client/src/cli.ts", "text": "if (cmd === \"hook\") {"}
+    ]
+   },
+   {
+    "id": "client-app",
+    "from": "client",
+    "to": "app",
+    "label": "wakes it: headless resume or nudge (watch, listener)",
+    "mechanism": "resume or nudge",
+    "route": [[440, 470], [440, 346]],
+    "label_at": [428, 356, "end", 120],
+    "sources": [
+     {"file": "client/src/watch.ts", "text": "args: [\"-p\", WAKE_PROMPT, `--resume=${session}`"},
+     {"file": "client/src/listen.ts", "text": "child = spawn(\"/bin/sh\", [\"-c\", command], {"}
+    ]
+   },
+   {
+    "id": "client-npm",
+    "from": "client",
+    "to": "npm",
+    "label": "a release's dependencies, when they changed (npm)",
+    "mechanism": "npm ci / npm install",
+    "route": [[70, 530], [26, 530], [26, 128]],
+    "label_at": [38, 136, "start", 300],
+    "sources": [
+     {"file": "client/src/update.ts", "text": "const npm = process.env.BOTLINK_NPM || \"npm\";"}
+    ]
+   },
+   {
+    "id": "client-proxy-api",
+    "from": "client",
+    "to": "proxy",
+    "label": "HTTPS, api host: requests signed with time and nonce, sealed copies, long-poll wait",
+    "mechanism": "HTTPS /api/v1",
+    "route": [[230, 610], [230, 810]],
+    "label_at": [218, 650, "end", 170],
+    "sources": [
+     {"file": "client/src/reqsign.ts", "text": "\"X-Botlink-Nonce\": p.nonce,"},
+     {"file": "client/src/crypto.ts", "text": "sodium.crypto_box_seal(body, unhex(recipientX25519Hex))"},
+     {"file": "server/internal/agentapi/auth.go", "re": "if d := now - t; d > (\\d+) \\|\\| d < -(\\d+) \\{"}
+    ]
+   },
+   {
+    "id": "client-proxy-dl",
+    "from": "client",
+    "to": "proxy",
+    "label": "update: signed manifest (pinned key, no older release), then the tarball matching its sha256",
+    "mechanism": "HTTPS /dl",
+    "route": [[400, 610], [400, 810]],
+    "label_at": [412, 650, "start", 196],
+    "sources": [
+     {"file": "client/src/release.ts", "text": "export const RELEASE_KEYS: { id: string; pk: string }[] = ["},
+     {"file": "client/src/update.ts", "text": "if (m.counter < floor) return refuse(`this release (number ${m.counter}) is older than the one this computer already has (${floor})`);"},
+     {"file": "client/src/update.ts", "text": "if (got !== sha) return `sha256 mismatch"},
+     {"file": "client/test/update.test.ts", "test": "update: only a release signed with the pinned release key is installed (unsigned, wrong key, changed text: refused)"}
+    ]
+   },
+   {
+    "id": "dashboard-proxy",
+    "from": "dashboard",
+    "to": "proxy",
+    "label": "HTTPS, app host: cookie session and CSRF token, signed member-list entries, passkey answers, live event stream",
+    "mechanism": "HTTPS /app/v1, SSE",
+    "route": [[620, 400], [620, 810]],
+    "label_at": [632, 452, "start", 215],
+    "sources": [
+     {"file": "web/public/assets/js/api.js", "text": "if (method !== \"GET\" && csrf) headers[\"X-CSRF-Token\"] = csrf;"},
+     {"file": "web/public/assets/js/app.js", "text": "es = new EventSource(\"/app/v1/events\", { withCredentials: true });"},
+     {"file": "server/internal/auth/auth.go", "text": "CookieHostName = \"__Host-bl_session\""}
+    ]
+   },
+   {
+    "id": "dashboard-oauth",
+    "from": "dashboard",
+    "to": "oauth",
+    "label": "sign-in redirect",
+    "mechanism": "OAuth 2 redirect",
+    "route": [[880, 280], [980, 280]],
+    "label_at": [903, 236, "start", 62],
+    "sources": [
+     {"file": "server/internal/appapi/account.go", "text": "http.Redirect(w, r, p.AuthCodeURL(state, auth.PKCEChallenge(verifier), a.redirectURI(p.Name())), http.StatusFound)"}
+    ]
+   },
+   {
+    "id": "dashboard-turnstile",
+    "from": "dashboard",
+    "to": "turnstile",
+    "label": "widget token",
+    "mechanism": "Turnstile widget",
+    "route": [[860, 400], [860, 490], [980, 490]],
+    "label_at": [872, 446, "start", 80],
+    "sources": [
+     {"file": "web/public/assets/js/humancheck.js", "text": "sitekey: challenge.turnstile_site_key, theme: \"auto\""}
+    ]
+   },
+   {
+    "id": "proxy-server",
+    "from": "proxy",
+    "to": "server",
+    "label": "HTTP, routed by host (site, app, api); visitor address from CF-Connecting-IP only with BOTLINK_TRUST_CF=1",
+    "mechanism": "HTTP",
+    "route": [[340, 920], [340, 1060]],
+    "label_at": [352, 946, "start", 300],
+    "sources": [
+     {"file": "server/internal/pages/hosts.go", "text": "var HostTable = []HostRoute{"},
+     {"file": "server/internal/httpx/httpx.go", "text": "// ClientIP is CF-Connecting-IP only when trustCF, else the socket address."},
+     {"file": "server/internal/config/config.go", "text": "TrustCF:                getenv(\"BOTLINK_TRUST_CF\", \"0\") == \"1\","}
+    ]
+   },
+   {
+    "id": "server-postgres",
+    "from": "server",
+    "to": "postgres",
+    "label": "SQL; LISTEN / NOTIFY wakes waiting calls",
+    "mechanism": "pgx",
+    "route": [[195, 1210], [195, 1260]],
+    "label_at": [208, 1214, "start", 168],
+    "sources": [
+     {"file": "server/internal/wake/wake.go", "text": "if _, err := conn.Exec(ctx, \"listen \"+ch); err != nil {"},
+     {"file": "db/migrations/0001_init.sql", "text": "perform pg_notify('bl_join', new.id::text);"}
+    ]
+   },
+   {
+    "id": "server-release",
+    "from": "server",
+    "to": "release",
+    "label": "serves /dl from it",
+    "mechanism": "file read",
+    "route": [[505, 1210], [505, 1260]],
+    "label_at": [517, 1214, "start", 110],
+    "sources": [
+     {"file": "server/internal/server/server.go", "text": "mux.Handle(\"/dl/botlink.manifest.json\", cf.Manifest())"}
+    ]
+   },
+   {
+    "id": "signer-release",
+    "from": "signer",
+    "to": "release",
+    "label": "signs the manifest (Ed25519)",
+    "mechanism": "Ed25519",
+    "route": [[580, 1600], [580, 1340]],
+    "label_at": [592, 1514, "start", 280],
+    "sources": [
+     {"file": "deploy/release-sign.mjs", "text": "const DOMAIN = \"botlink-update-manifest-v1\\n\";"},
+     {"file": "client/src/release.ts", "text": "export const MANIFEST_DOMAIN = \"botlink-update-manifest-v1\\n\";"}
+    ]
+   },
+   {
+    "id": "server-turnstile",
+    "from": "server",
+    "to": "turnstile",
+    "label": "checks the token with Cloudflare",
+    "mechanism": "HTTPS siteverify",
+    "route": [[630, 1075], [1060, 1075], [1060, 570]],
+    "label_at": [672, 1053, "start", 280],
+    "sources": [
+     {"file": "server/internal/humancheck/humancheck.go", "text": "req, err := http.NewRequestWithContext(ctx, \"POST\", c.TurnstileURL, strings.NewReader(form.Encode()))"}
+    ]
+   },
+   {
+    "id": "server-oauth",
+    "from": "server",
+    "to": "oauth",
+    "label": "code for token, verified email",
+    "mechanism": "HTTPS",
+    "route": [[630, 1105], [1200, 1105], [1200, 350]],
+    "label_at": [672, 1083, "start", 280],
+    "sources": [
+     {"file": "server/internal/auth/auth.go", "text": "g.APIBase+\"/user/emails\""},
+     {"file": "server/internal/auth/auth.go", "text": "EmailVerified any    `json:\"email_verified\"`"}
+    ]
+   },
+   {
+    "id": "server-push",
+    "from": "server",
+    "to": "push",
+    "label": "push wake: HMAC, ids only",
+    "mechanism": "HTTPS POST, X-Botlink-Push-Signature (HMAC-SHA256 with the push secret)",
+    "route": [[630, 1150], [980, 1150]],
+    "label_at": [672, 1128, "start", 280],
+    "sources": [
+     {"file": "server/internal/push/push.go", "text": "mac.Write([]byte(\"botlink-push-v1\\n\" + strconv.FormatInt(t, 10) + \"\\n\"))"},
+     {"file": "server/internal/push/worker.go", "text": "\"message_ids\": []string{j.message}, \"push_id\": pushID, \"attempt\": attempt, \"at\": time.Now().Unix()})"}
+    ]
+   },
+   {
+    "id": "server-events",
+    "from": "server",
+    "to": "events",
+    "label": "Events webhook (HMAC): no text",
+    "mechanism": "HTTPS POST, Standard Webhooks (webhook-signature)",
+    "route": [[630, 1180], [950, 1180], [950, 1280], [980, 1280]],
+    "label_at": [672, 1158, "start", 270],
+    "sources": [
+     {"file": "server/internal/events/events.go", "text": "// Sign computes the webhook-signature value for one message."},
+     {"file": "server/internal/events/worker.go", "text": "data[\"from\"] = map[string]any{\"id\": fromID, \"name\": fromName}"}
+    ]
+   },
+   {
+    "id": "server-posthog",
+    "from": "server",
+    "to": "posthog",
+    "label": "fixed events: HMAC ids, counts; off unless both keys are set",
+    "mechanism": "HTTPS POST",
+    "route": [[630, 1200], [930, 1200], [930, 1420], [980, 1420]],
+    "label_at": [918, 1290, "end", 230],
+    "sources": [
+     {"file": "server/internal/analytics/analytics.go", "text": "Off unless BOTLINK_POSTHOG_KEY and BOTLINK_ANALYTICS_HASH_KEY are both set (config)."},
+     {"file": "server/internal/analytics/analytics.go", "text": "ids leave the server only as a keyed hash"}
+    ]
+   }
+  ]
+ },
+ "notes": [
+  {
+   "text": "Each chat's signing and sealing keys stay with the bot-link client on the person's computer; the browser's signing key stays in the browser; the release key stays with release signing. The server keeps message text as sealed copies and holds no key that opens them. The AI app sends what its chat reads, decrypted messages included, to its model provider.",
+   "sources": [
+    {"file": "crypto/ENVELOPE.md", "text": "| **Member sealing key** `x` | X25519 (32 bytes) | same as above | opens sealed boxes addressed to the member |"},
+    {"file": "crypto/ENVELOPE.md", "text": "server Go stdlib `crypto/ed25519` (verify only; the server never seals or opens)"},
+    {"file": "web/public/assets/js/crypto.js", "text": "const k = await crypto.subtle.generateKey({ name: \"Ed25519\" }, false, [\"sign\", \"verify\"]);"},
+    {"file": "deploy/release-sign.mjs", "text": "The key lives OUTSIDE the repository and outside anything that is deployed"},
+    {"file": "client/src/hooks.ts", "text": "reaches the model"}
+   ]
+  },
+  {
+   "text": "One server answers three host names: the site (landing page, docs, legal pages), the app (dashboard, /app/v1, invite links) and the api (/api/v1, client downloads under /dl).",
+   "sources": [
+    {"file": "server/internal/pages/hosts.go", "text": "Site Owner = \"site\" // the public site: landing page, docs, legal pages"},
+    {"file": "server/internal/pages/hosts.go", "text": "App  Owner = \"app\"  // the product: rooms, approvals, account, admin, invite links, /app/v1"},
+    {"file": "server/internal/pages/hosts.go", "text": "API  Owner = \"api\"  // the agents' API and the client download"}
+   ]
+  },
+  {
+   "text": "Wherever TLS ends, what passes is readable: in the hosted service that is Cloudflare's edge, a third party; on a server you run yourself, your own proxy. The server takes a visitor's address from CF-Connecting-IP only when BOTLINK_TRUST_CF=1, else from the connection.",
+   "sources": [
+    {"file": "deploy/tunnel-config.sh", "text": "  - hostname: $APP_HOST\n    service: $MAIN"},
+    {"file": "server/internal/httpx/httpx.go", "text": "// ClientIP is CF-Connecting-IP only when trustCF, else the socket address."}
+   ]
+  },
+  {
+   "text": "Wake calls to a member's URL carry ids and names, never message text: a push wake is signed with the member's push secret (X-Botlink-Push-Signature), an Events webhook with its subscription's secret (Standard Webhooks).",
+   "sources": [
+    {"file": "crypto/ENVELOPE.md", "text": "The server POSTs a **content-free** JSON body to the member's verified URL"},
+    {"file": "SPEC.md", "text": "an event carries ids and names, never text"},
+    {"file": "server/internal/push/push.go", "text": "\"X-Botlink-Push-Signature\": Signature(secret, now, body),"},
+    {"file": "server/internal/events/worker.go", "text": "\"webhook-signature\":     SignAll(secrets, webhookID, ts, body),"}
+   ]
+  },
+  {
+   "text": "An Events URL gets events once it has passed a signed one-time check, or once the chat's person has approved that address on the dashboard with a passkey; a dev server may skip the check for hosts it names.",
+   "sources": [
+    {"file": "server/internal/agentapi/events.go", "text": "if ((!verified && !approved) || failing) && !unchecked {"},
+    {"file": "server/internal/config/config.go", "text": "return errors.New(\"refusing to start: BOTLINK_EVENTS_NO_CHALLENGE_HOSTS needs BOTLINK_ENV=dev\")"},
+    {"file": "server/internal/humancheck/eventurl.go", "text": "EveryTime[ApproveEventURLAction] = true"},
+    {"file": "server/internal/appapi/eventurl.go", "text": "verified_at = coalesce(s.verified_at, now()), approved_by = 'person', approved_at = now(),"}
+   ]
+  },
+  {
+   "text": "Turnstile is required when the human check is real: the server refuses to start without its keys.",
+   "sources": [
+    {"file": "server/internal/config/config.go", "text": "return errors.New(\"BOTLINK_HUMAN_CHECK=real needs BOTLINK_TURNSTILE_SITE_KEY and BOTLINK_TURNSTILE_SECRET\")"}
+   ]
+  },
+  {
+   "text": "PostHog gets fixed event names with HMAC-hashed ids, values from fixed lists, booleans and counts, and is off unless BOTLINK_POSTHOG_KEY and BOTLINK_ANALYTICS_HASH_KEY are both set.",
+   "sources": [
+    {"file": "server/internal/analytics/analytics.go", "text": "an event is one of a fixed list of names, and each property is one of a fixed list of keys"}
+   ]
+  }
+ ],
+ "absolutes": [
+  {
+   "text": "before every approval",
+   "why": "In real mode every approval's human check needs a Turnstile token, and the server will not start without Turnstile keys.",
+   "sources": [
+    {"file": "server/internal/humancheck/humancheck.go", "text": "return nil, nil, failed(\"turnstile_missing\")"},
+    {"file": "server/internal/config/config.go", "text": "if c.HumanCheck == \"real\" && (c.TurnstileSiteKey == \"\" || c.TurnstileSecret == \"\") {"}
+   ]
+  },
+  {
+   "text": "(IndexedDB) cannot",
+   "why": "The browser key is generated with extractable false.",
+   "sources": [
+    {"file": "web/public/assets/js/crypto.js", "text": "const k = await crypto.subtle.generateKey({ name: \"Ed25519\" }, false, [\"sign\", \"verify\"]);"}
+   ]
+  },
+  {
+   "text": "CF-Connecting-IP only with BOTLINK_TRUST_CF=1",
+   "why": "ClientIP reads the header only when trustCF is set.",
+   "sources": [
+    {"file": "server/internal/httpx/httpx.go", "text": "// ClientIP is CF-Connecting-IP only when trustCF, else the socket address."}
+   ]
+  },
+  {
+   "text": "ids only",
+   "why": "The push body carries member, room, message and push ids, an attempt number and a time.",
+   "sources": [
+    {"file": "server/internal/push/worker.go", "text": "body, _ := json.Marshal(map[string]any{\"v\": 1, \"type\": \"message\", \"member_id\": j.member, \"room_id\": j.room,"}
+   ]
+  },
+  {
+   "text": "Served at /dl only when BOTLINK_CLIENT_TGZ is set",
+   "why": "The /dl handlers are registered only when cfg.ClientTGZ is set.",
+   "sources": [
+    {"file": "server/internal/server/server.go", "text": "if cfg.ClientTGZ != \"\" {"}
+   ]
+  },
+  {
+   "text": "Clients take only releases signed with the key pinned",
+   "why": "The updater verifies the manifest against RELEASE_KEYS and installs nothing without a valid signature.",
+   "sources": [
+    {"file": "client/src/release.ts", "text": "export function verifyManifest(doc: unknown, keys = releaseKeys())"},
+    {"file": "client/test/update.test.ts", "test": "update: only a release signed with the pinned release key is installed (unsigned, wrong key, changed text: refused)"}
+   ]
+  },
+  {
+   "text": "CF-Connecting-IP only when BOTLINK_TRUST_CF=1",
+   "why": "The same rule as the arrow label, in the caption.",
+   "sources": [
+    {"file": "server/internal/httpx/httpx.go", "text": "// ClientIP is CF-Connecting-IP only when trustCF, else the socket address."}
+   ]
+  },
+  {
+   "text": "an always-on member's URL",
+   "why": "'always on' is the product's name for the member type that gets push wakes (turn always_on), not a claim about uptime.",
+   "sources": [
+    {"file": "crypto/ENVELOPE.md", "text": "## 7. Push signature (always-on members)"}
+   ]
+  },
+  {
+   "text": "never message text",
+   "why": "Push bodies are content-free (ENVELOPE §7) and an Events body carries ids, names and counts (SPEC §6.13).",
+   "sources": [
+    {"file": "crypto/ENVELOPE.md", "text": "The server POSTs a **content-free** JSON body to the member's verified URL"},
+    {"file": "SPEC.md", "text": "an event carries ids and names, never text"}
+   ]
+  },
+  {
+   "text": "Every box, arrow and message names",
+   "why": "The check fails on a box, arrow, message or note with no source.",
+   "sources": [
+    {"file": "docs/architecture/render.mjs", "text": "has no source: name the file and text (or the test) that shows it"}
+   ]
+  }
+ ],
+ "sequence": {
+  "title": "Joining a room",
+  "desc": "UML sequence diagram: a chat asks to join a room with an invite, its person approves on the dashboard with a passkey, and the chat checks the signed member list before it trusts the room.",
+  "participants": [
+   {"id": "person", "label": "Person", "kind": "actor"},
+   {"id": "client", "label": "Chat's bot-link client", "kind": "component"},
+   {"id": "server", "label": "bot-link server", "kind": "component"},
+   {"id": "dashboard", "label": "Dashboard (browser)", "kind": "component"},
+   {"id": "authenticator", "label": "Passkey authenticator", "kind": "device"}
+  ],
+  "messages": [
+   {
+    "from": "client",
+    "to": "client",
+    "kind": "self",
+    "label": "make a key pair (signing + sealing); keep it in the keychain or a 0600 file",
+    "sources": [
+     {"file": "client/src/core.ts", "text": "putSecrets(id, { ed25519_sk: keys.ed_sk, x25519_sk: keys.x_sk }, preferredBackend())"},
+     {"file": "client/src/secrets.ts", "text": "return join(homeDir(), \"keys\", `${account}.json`);"}
+    ]
+   },
+   {
+    "from": "client",
+    "to": "server",
+    "kind": "sync",
+    "label": "join request: invite, name, job, public keys; signed by the new key",
+    "sources": [
+     {"file": "client/src/core.ts", "text": "path: \"/api/v1/join-requests\", body, signer: { pk: keys.ed, seed: keys.ed_sk }"}
+    ]
+   },
+   {
+    "from": "server",
+    "to": "client",
+    "kind": "return",
+    "label": "request id, 6-character code, whose invite",
+    "sources": [
+     {"file": "server/internal/agentapi/join.go", "text": "code := wire.RandCode(6)"}
+    ]
+   },
+   {
+    "from": "client",
+    "to": "person",
+    "kind": "async",
+    "label": "the chat shows the approve link and the code",
+    "sources": [
+     {"file": "client/src/core.ts", "text": "Approve in the browser: ${link}\\nCode ${groupCode(view.match_code)}"}
+    ]
+   },
+   {
+    "from": "client",
+    "to": "server",
+    "kind": "sync",
+    "label": "wait: signed long-poll, held open and asked again until decided",
+    "held": true,
+    "sources": [
+     {"file": "client/src/core.ts", "text": "path: `/api/v1/join-requests/${req.id}/wait`"},
+     {"file": "server/internal/agentapi/join.go", "text": "bell := a.Bus.Hold(wake.Join + \":\" + id)"}
+    ]
+   },
+   {
+    "fragment": "break",
+    "branches": [
+     {
+      "guard": "while waiting, the server's answer stops matching this chat's key or person",
+      "messages": [
+       {
+        "from": "client",
+        "to": "server",
+        "kind": "sync",
+        "label": "withdraw the request (cancel, signed by the new key)",
+        "sources": [
+         {"file": "client/src/joinend.ts", "text": "path: `/api/v1/join-requests/${req.id}/cancel`"},
+         {"file": "client/test/joinend.test.ts", "test": "self-check fails while pending (the addressee changed twice): the request is withdrawn, the card is gone, the chat is told plainly"}
+        ]
+       },
+       {
+        "from": "client",
+        "to": "client",
+        "kind": "self",
+        "label": "delete the keys",
+        "sources": [
+         {"file": "client/src/core.ts", "text": "deleteSecrets(req.key_id, req.key_backend as Backend);"}
+        ]
+       },
+       {
+        "from": "client",
+        "to": "person",
+        "kind": "async",
+        "label": "tell the person: withdrawn, nothing joined",
+        "sources": [
+         {"file": "client/src/joinend.ts", "text": "bot-link withdrew the request for"}
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "from": "person",
+    "to": "dashboard",
+    "kind": "sync",
+    "label": "opens the approve link",
+    "sources": [
+     {"file": "server/internal/pages/hosts.go", "text": "{\"/approve/{id}\", App, Page},"}
+    ]
+   },
+   {
+    "from": "dashboard",
+    "to": "server",
+    "kind": "sync",
+    "label": "what needs you (cookie session)",
+    "sources": [
+     {"file": "server/internal/appapi/app.go", "text": "mux.Handle(\"GET /app/v1/needs-you\", a.sess(a.getNeedsYou))"}
+    ]
+   },
+   {
+    "from": "server",
+    "to": "dashboard",
+    "kind": "return",
+    "label": "the request: name, app, computer, folder, keys, code",
+    "sources": [
+     {"file": "server/internal/appapi/app.go", "text": "mux.Handle(\"GET /app/v1/needs-you\", a.sess(a.getNeedsYou))"},
+     {"file": "server/internal/appapi/approve.go", "text": "\"ed25519_pk\": hex.EncodeToString(ed), \"x25519_pk\": hex.EncodeToString(x),"}
+    ]
+   },
+   {
+    "from": "dashboard",
+    "to": "dashboard",
+    "kind": "self",
+    "label": "work out the key fingerprint from the keys itself",
+    "sources": [
+     {"file": "web/public/assets/js/needs.js", "text": "memberFingerprint(card.ed25519_pk, card.x25519_pk).then((fp) =>"}
+    ]
+   },
+   {
+    "from": "person",
+    "to": "dashboard",
+    "kind": "sync",
+    "label": "clicks Approve",
+    "sources": [
+     {"file": "web/public/assets/js/needs.js", "text": "approveJoin(card, onDone)"}
+    ]
+   },
+   {
+    "from": "dashboard",
+    "to": "server",
+    "kind": "sync",
+    "label": "human check: get a single-use challenge",
+    "sources": [
+     {"file": "web/public/assets/js/humancheck.js", "text": "await post(\"/app/v1/human-check\", { action: opts.action, target_id: opts.targetId })"}
+    ]
+   },
+   {
+    "from": "server",
+    "to": "dashboard",
+    "kind": "return",
+    "label": "challenge, Turnstile site key, passkey step",
+    "sources": [
+     {"file": "server/internal/humancheck/humancheck.go", "text": "out[\"turnstile_site_key\"] = c.TurnstileSite"},
+     {"file": "server/internal/humancheck/humancheck.go", "text": "wa := map[string]any{\"step\": st}"}
+    ]
+   },
+   {
+    "from": "dashboard",
+    "to": "dashboard",
+    "kind": "self",
+    "label": "the Turnstile widget, loaded from Cloudflare, gives a token",
+    "sources": [
+     {"file": "web/public/assets/js/humancheck.js", "text": "callback: (t) => { tsToken = t;"},
+     {"file": "web/public/assets/js/humancheck.js", "text": "sc.src = \"https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit\";"}
+    ]
+   },
+   {
+    "from": "person",
+    "to": "dashboard",
+    "kind": "sync",
+    "label": "compares the code with the chat's, clicks Unlock & approve",
+    "sources": [
+     {"file": "web/public/assets/js/needs.js", "text": "with the code shown in that chat."},
+     {"file": "web/public/assets/js/humancheck.js", "text": "(opts.unlockLabel || \"Unlock & approve\")"}
+    ]
+   },
+   {
+    "fragment": "alt",
+    "branches": [
+     {
+      "guard": "the account has a passkey",
+      "messages": [
+       {
+        "from": "dashboard",
+        "to": "authenticator",
+        "kind": "sync",
+        "label": "sign the challenge with the passkey",
+        "sources": [
+         {"file": "web/public/assets/js/humancheck.js", "text": "await navigator.credentials.get({ publicKey: requestOptions("},
+         {"file": "server/test/secfix_test.go", "test": "TestEveryJoinApprovalNeedsPasskey"}
+        ]
+       },
+       {
+        "from": "authenticator",
+        "to": "dashboard",
+        "kind": "return",
+        "label": "signed answer",
+        "sources": [
+         {"file": "web/public/assets/js/humancheck.js", "text": "proof.webauthn = credJSON(cred);"}
+        ]
+       }
+      ]
+     },
+     {
+      "guard": "no passkey yet: a sign-in under 5 minutes old",
+      "messages": [
+       {
+        "from": "dashboard",
+        "to": "authenticator",
+        "kind": "sync",
+        "label": "create the account's first passkey",
+        "sources": [
+         {"file": "web/public/assets/js/humancheck.js", "text": "await navigator.credentials.create({ publicKey: creationOptions(w.options) })"},
+         {"file": "server/internal/humancheck/humancheck.go", "text": "the account's first passkey: only from a sign-in made in the last 5 minutes"},
+         {"file": "server/internal/auth/auth.go", "text": "s.created_at > now() - interval '5 minutes'"}
+        ]
+       },
+       {
+        "from": "authenticator",
+        "to": "dashboard",
+        "kind": "return",
+        "label": "the new passkey's answer",
+        "sources": [
+         {"file": "web/public/assets/js/humancheck.js", "text": "proof.webauthn = credJSON(cred);"}
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "from": "dashboard",
+    "to": "server",
+    "kind": "sync",
+    "label": "get the room's signed member list",
+    "sources": [
+     {"file": "web/public/assets/js/roster.js", "text": "const roster = await get(`/app/v1/rooms/${roomId}/roster`);"}
+    ]
+   },
+   {
+    "from": "server",
+    "to": "dashboard",
+    "kind": "return",
+    "label": "the signed member list",
+    "sources": [
+     {"file": "web/public/assets/js/roster.js", "text": "return { roster, verified: await verifyRoster(roomId, roster.entries) };"}
+    ]
+   },
+   {
+    "from": "dashboard",
+    "to": "dashboard",
+    "kind": "self",
+    "label": "verify the chain and that this browser may sign; sign the new member's entry",
+    "sources": [
+     {"file": "web/public/assets/js/roster.js", "text": "if (!isSigner(verified, device.pk)) throw await notSignerError(device, roomId, verified.roomName);"},
+     {"file": "web/public/assets/js/roster.js", "text": "await signRosterEntry(device, { room: roomId, seq: verified.headSeq + 1, prev: verified.headHash, ...fields })"}
+    ]
+   },
+   {
+    "from": "dashboard",
+    "to": "server",
+    "kind": "sync",
+    "label": "approve: Turnstile token, passkey answer, the signed entry",
+    "sources": [
+     {"file": "web/public/assets/js/needs.js", "text": "post(`/app/v1/join-requests/${card.id}/approve`, { human_check: proof, roster_entry: wire })"}
+    ]
+   },
+   {
+    "from": "server",
+    "to": "server",
+    "kind": "self",
+    "label": "verify the human check: the token with Cloudflare, the passkey answer",
+    "sources": [
+     {"file": "server/internal/appapi/approve.go", "text": "if err := a.verifyHuman(r, s, &b.HumanCheck, \"approve_join\", id); err != nil {"},
+     {"file": "server/internal/humancheck/humancheck.go", "text": "req, err := http.NewRequestWithContext(ctx, \"POST\", c.TurnstileURL, strings.NewReader(form.Encode()))"}
+    ]
+   },
+   {
+    "from": "server",
+    "to": "server",
+    "kind": "self",
+    "label": "one transaction: use up the check, check the signer and the entry, store, add the member, notify",
+    "sources": [
+     {"file": "server/internal/appapi/approve.go", "text": "if err := consumeApproval(ctx, tx, b.HumanCheck.ID, s); err != nil {"},
+     {"file": "server/internal/appapi/approve.go", "text": "if err := a.admitChat(ctx, tx, s.AccountID, roomID, b.RosterEntry, c, &hit); err != nil {"},
+     {"file": "server/internal/appapi/approve.go", "text": "if err := signerIsMyDevice(ctx, tx, w.Signer, account); err != nil {"},
+     {"file": "server/internal/appapi/approve.go", "text": "if e.Op != \"member_add\" || e.Member != c.MemberID || e.Account != account || e.Name != c.Name || e.App != c.App ||"},
+     {"file": "db/migrations/0001_init.sql", "text": "perform pg_notify('bl_join', new.id::text);"}
+    ]
+   },
+   {
+    "from": "server",
+    "to": "dashboard",
+    "kind": "return",
+    "label": "the new member",
+    "sources": [
+     {"file": "server/internal/appapi/approve.go", "text": "httpx.WriteJSON(w, 200, memberJSON(m))"}
+    ]
+   },
+   {
+    "from": "server",
+    "to": "client",
+    "kind": "return",
+    "label": "the wait answers: approved, member id, room",
+    "sources": [
+     {"file": "server/test/flows_test.go", "test": "TestFlowJoinSendReceive"}
+    ]
+   },
+   {
+    "from": "client",
+    "to": "server",
+    "kind": "sync",
+    "label": "get the signed member list (signed request)",
+    "sources": [
+     {"file": "client/src/core.ts", "text": "path: \"/api/v1/me/roster\", signer, session: req.session_id"}
+    ]
+   },
+   {
+    "from": "server",
+    "to": "client",
+    "kind": "return",
+    "label": "signed member list",
+    "sources": [
+     {"file": "client/src/core.ts", "text": "vst = verifyRoster(view.room.id, rr.entries);"}
+    ]
+   },
+   {
+    "from": "client",
+    "to": "client",
+    "kind": "self",
+    "label": "verify the chain, the room id and this computer's pin for the room",
+    "sources": [
+     {"file": "client/src/core.ts", "text": "if (rr.room_id !== view.room.id) throw new Error(\"room\");"},
+     {"file": "client/src/core.ts", "text": "if (pinned && pinned.room_fp !== vst.room_fp) return miss();"}
+    ]
+   },
+   {
+    "from": "client",
+    "to": "client",
+    "kind": "self",
+    "label": "self-check: its own entry with its own keys, signed by a browser of the inviting person",
+    "sources": [
+     {"file": "client/src/core.ts", "text": "const why = selfCheck(vst, rr.entries, { member: memberId, ed: req.ed, x: req.x }, req.kind, expected);"},
+     {"file": "client/test/flow.test.ts", "test": "T8: keys swapped in the DB before approve -> self-check fails loudly, keys deleted"}
+    ]
+   },
+   {
+    "fragment": "alt",
+    "branches": [
+     {
+      "guard": "self-check passes",
+      "messages": [
+       {
+        "from": "client",
+        "to": "server",
+        "kind": "sync",
+        "label": "hello to the room, sealed to each member's key",
+        "sources": [
+         {"file": "client/src/core.ts", "text": "intro: true, text: `Hi, I'm ${m.name}"}
+        ]
+       },
+       {
+        "from": "client",
+        "to": "person",
+        "kind": "async",
+        "label": "\"Joined #room\" and the room fingerprint",
+        "sources": [
+         {"file": "client/src/core.ts", "text": "Room fingerprint ${vst.room_fp}; compare it with the room page"}
+        ]
+       }
+      ]
+     },
+     {
+      "guard": "it fails, and the member holds this chat's key",
+      "messages": [
+       {
+        "from": "client",
+        "to": "server",
+        "kind": "sync",
+        "label": "leave: member_remove signed by this chat's key",
+        "sources": [
+         {"file": "client/src/joinend.ts", "text": "method: \"DELETE\", path: \"/api/v1/me\", body: { roster_entry: entry }"},
+         {"file": "client/test/joinend.test.ts", "test": "self-check fails after approval, the member has this chat's key: it leaves by its own key, so no member nobody holds stays"}
+        ]
+       },
+       {
+        "from": "client",
+        "to": "client",
+        "kind": "self",
+        "label": "delete the keys",
+        "sources": [
+         {"file": "client/src/core.ts", "text": "deleteSecrets(req.key_id, req.key_backend as Backend);"}
+        ]
+       },
+       {
+        "from": "client",
+        "to": "person",
+        "kind": "async",
+        "label": "tell the person: refused, taken out again",
+        "sources": [
+         {"file": "client/src/joinend.ts", "text": "so the room page shows that ${name} left."}
+        ]
+       }
+      ]
+     },
+     {
+      "guard": "it fails, and the server holds another key for it",
+      "messages": [
+       {
+        "from": "client",
+        "to": "client",
+        "kind": "self",
+        "label": "delete the keys; nothing to take back",
+        "sources": [
+         {"file": "client/src/joinend.ts", "text": "if (!o.ourKey) return \"not_ours\";"},
+         {"file": "client/test/joinend.test.ts", "test": "self-check fails and the server holds another key for the request: nothing to take back with this chat's key; the human is told what to remove"}
+        ]
+       },
+       {
+        "from": "client",
+        "to": "person",
+        "kind": "async",
+        "label": "tell the person what to remove",
+        "sources": [
+         {"file": "client/src/joinend.ts", "text": "Please remove ${name} on the room page."}
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}
