@@ -1,5 +1,5 @@
 # Paths of the private repository that this public export leaves out, with why. Checks that read one of them
-# skip that part and say so. Built from commit 0d77e5c.
+# skip that part and say so. Built from commit cc202ce.
 docs/calm/	before-and-after screenshots of a design review; nothing builds or tests from them
 web/BRIEF-POLISH.md	a design brief written for a builder, with paths of the maintainers' machine
 web/shots/	screenshots the browser tests rewrite on every run (web/test/test_e2e.py makes the folder)
