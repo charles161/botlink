@@ -63,7 +63,7 @@ export function localInstallProblem(apps: string[], dev = false): string | null 
 /** Install bot-link into `app` if it isn't there yet. -> lines to print (empty when already set up). */
 export function ensureInstalled(app: App, o: { dev?: boolean } = {}): { lines: string[]; ok: boolean } {
   // T3 Code: nothing of bot-link's is installed into it (a thread uses the command line; its wake is `t3 thread send`)
-  if (app === "other" || app === "t3") return { lines: [], ok: true };
+  if (app === "other" || app === "t3" || app === "antigravity") return { lines: [], ok: true };
   if (h.configured(app)) return { lines: [], ok: true };
   const bad = localInstallProblem([app], o.dev);
   if (bad) return { lines: [bad], ok: false };
@@ -382,7 +382,7 @@ export function applySetup(o: SetupOpts = {}): { lines: string[]; ok: boolean } 
 
 /** Is bot-link set up for this app where this chat runs (its project folder, or profile-wide)? */
 export function configuredHere(app: App, dir = process.cwd()): "project" | "user" | null {
-  if (app === "other" || app === "t3") return null;
+  if (app === "other" || app === "t3" || app === "antigravity") return null;
   const a = app as SetupApp;
   if (h.withScope({ kind: "project", dir }, () => h.configured(a))) return "project";
   if (h.withScope({ kind: "user" }, () => h.configured(a))) return "user";

@@ -107,11 +107,14 @@ def flow(b, base, vp, shots):
         expect(banner(A).locator(f"[data-notify='{y['id']}']")).to_contain_text("P4W-BNZ")
         wait_title(A, r"^\(2\) ")
         A.audit("devices-two-requests"); shot(A, "devices-two-requests")
-        # on the rooms page the cards are already on the page: no second copy in the banner, still marked as two
+        # on the rooms page both are already on the page, as ONE card of tries (same app, computer and folder:
+        # needs-tries.js), y the newest with x under "Older tries": no copy in the banner, still marked as two codes
         A.go("/rooms")
-        expect(A.pg.locator("#main [data-need=join]")).to_have_count(2, timeout=8000)
+        expect(A.pg.locator("#main [data-need=join][data-tries='2']")).to_have_count(1, timeout=8000)
+        A.check(A.pg.locator("#main [data-need=join]").count() == 1, "rooms page: two tries from one place are more than one card")
+        A.check(A.pg.locator(f"#main [data-older-request='{x['id']}']").count() == 1, "rooms page: x isn't under Older tries")
         A.check(banner(A).locator("[data-notify]").count() == 0, "rooms page: the banner doesn't repeat cards the page shows")
-        expect(A.pg.locator("#main .need-twins").first).to_contain_text("different requests")
+        expect(A.pg.locator("#main .need-twins").first).to_contain_text("2 different codes")
         wait_title(A, r"^\(2\) ")
 
         # 3. the approval page of x: y still shows in the banner (the founder's case: the other request is in view)

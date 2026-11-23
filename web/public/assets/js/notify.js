@@ -39,7 +39,7 @@ export function waiting() {
   for (const c of n.join_requests || []) {
     out.push({ id: c.id, type: c.kind === "claim" ? "move" : "join", roomId: c.room_id, room: c.room_name, name: c.name,
       app: appName(c.app, c.app_name), machine: c.machine || "an unknown computer", code: c.match_code,
-      expires: Date.parse(c.expires_at), href: `/approve/${c.id}`, sel: `[aria-labelledby="jr-${c.id}"]` });
+      expires: Date.parse(c.expires_at), href: `/approve/${c.id}`, sel: `[aria-labelledby="jr-${c.id}"], [data-older-request="${c.id}"]` });
   }
   for (const p of n.person_requests || []) {
     out.push({ id: p.id, type: "person", roomId: p.room_id, room: p.room_name, name: p.display_name, email: p.email,

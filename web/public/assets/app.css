@@ -140,6 +140,11 @@ body::before {
 .nav-side { display: flex; align-items: center; gap: 6px; }
 .nav-link { min-height: 44px; white-space: nowrap; display: inline-flex; align-items: center; gap: 8px; padding: 0 10px; border-radius: 999px; font-weight: 600; text-decoration: none; transition: background .2s; }
 .nav-link:hover { background: var(--paper-2); color: var(--ink); }
+/* the header's GitHub link (github-link.js): mark + label (+ star count from 50); on a phone the mark alone */
+.gh-link { gap: 7px; color: var(--ink-2); }
+.gh-link:hover { color: var(--ink); }
+.gh-stars { min-height: 24px; display: inline-grid; place-items: center; padding: 0 8px; border: 1.5px solid var(--line); border-radius: 999px; color: var(--ink-2); font: 700 13px/1 var(--sans); font-variant-numeric: tabular-nums; }
+@media (max-width: 560px) { .gh-link { width: 44px; justify-content: center; padding: 0; } .gh-link .gh-label, .gh-link .gh-stars { display: none; } }
 .count-dot { min-width: 22px; height: 22px; display: inline-grid; place-items: center; padding: 0 6px; border: 1.5px solid var(--char-ink); border-radius: 999px; background: var(--sun); color: #15333a; font: 800 13px/1 var(--sans); }
 .count-dot.big { min-width: 30px; height: 30px; font-size: 14px; box-shadow: 0 2px 0 var(--hard); }
 .menu-wrap { position: relative; }
@@ -1046,8 +1051,8 @@ td > .adm-code:first-child { margin-left: 0; }
 .lp-hero-safe-k { flex: none; width: 32px; height: 32px; display: grid; place-items: center; border: 2px solid var(--char-ink); border-radius: 10px; background: var(--mint); color: #15333a; }
 
 /* apps */
-.lp-apps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
-.lp-app { display: flex; align-items: center; gap: 14px; min-width: 0; padding: 14px 16px 14px 14px; border: 2px solid var(--edge); border-radius: var(--r-md); background: var(--card); box-shadow: 0 4px 0 var(--hard); transition: transform .3s var(--spring); }
+.lp-apps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
+.lp-app { display: flex; align-items: flex-start; gap: 14px; min-width: 0; padding: 16px 18px 16px 16px; border: 2px solid var(--edge); border-radius: var(--r-md); background: var(--card); box-shadow: 0 4px 0 var(--hard); transition: transform .3s var(--spring); }
 .lp-app:hover { transform: translateY(-3px); }
 .lp-app .lp-ic { width: 48px; height: 48px; border-radius: 14px; }
 .lp-app b { display: block; font-size: 16px; font-weight: 800; line-height: 1.2; }
@@ -1243,6 +1248,20 @@ td > .adm-code:first-child { margin-left: 0; }
   .batch-go { justify-self: stretch; }
   .batch-list li { grid-template-columns: auto minmax(0, 1fr); }
   .batch-list .match-code { grid-column: 1 / -1; grid-row: auto; }
+}
+
+/* ── join requests of one room from one place as one card (needs-tries.js) ── */
+.need.need-again { animation: none; }
+.tries-more { color: var(--ink-2); }
+.tries-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.tries-row { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px 14px; padding: 10px 12px; border: 2px solid var(--edge); border-radius: 12px; background: var(--card); color: var(--ink); }
+.tries-who { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; min-width: 0; }
+.tries-name { font: 800 16px/1.3 var(--mono); overflow-wrap: anywhere; }
+.tries-when { font-size: 14px; color: var(--ink-2); }
+.tries-row .btn { min-height: 44px; justify-self: end; }
+@media (max-width: 560px) {
+  .tries-row { grid-template-columns: minmax(0, 1fr); justify-items: start; }
+  .tries-row .btn { justify-self: stretch; }
 }
 
 /* ── an event address a person approves (needs-eventurl.js, views/approve-url.js) ── */

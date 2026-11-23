@@ -156,6 +156,8 @@ test("another app in the same folder never continues the request (it is another 
   const h = newHome("ident9");
   await on(h, async () => {
     await core.joinCreate(args(inv, h, S, "cc"));
-    await assert.rejects(core.joinCreate(args(inv, h, S2, "cc", "codex")), /already taken/);
+    // (founder bug 21 Nov 2026: a name held by a waiting request is said to wait, not to be "taken"; the request is
+    // another app's, so this chat needs its own name)
+    await assert.rejects(core.joinCreate(args(inv, h, S2, "cc", "codex")), /belongs to another app's chat on this computer \(Claude Code\), and its request is waiting for approval\. This chat is another chat: ask your human which name to use/);
   });
 });

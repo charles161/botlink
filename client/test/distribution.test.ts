@@ -31,7 +31,7 @@ test("selfCmd: never a bare `npx botlink`; a checkout prints its absolute path, 
     assert.equal(selfCmd(), `node ${join(ROOT, "dist", "cli.js")}`, "a checkout runs itself by absolute path");
     process.env.BOTLINK_CLIENT_URL = "https://dl.botlink.dev/dl/botlink.tgz";
     assert.equal(clientUrl(), "https://dl.botlink.dev/dl/botlink.tgz");
-    assert.equal(selfCmd(), "npx -y https://dl.botlink.dev/dl/botlink.tgz");
+    assert.equal(selfCmd(), "npx -y --allow-remote=all https://dl.botlink.dev/dl/botlink.tgz");
     // an address that isn't one of bot-link's hosts is never printed as "run this" (security review 2026-11-12)
     process.env.BOTLINK_CLIENT_URL = "https://api.example.test/dl/botlink.tgz";
     assert.equal(clientUrl(), DEFAULT_CLIENT_URL);
@@ -57,8 +57,8 @@ test("CLI output (help, join/claim/listen usage and hints) never says `npx botli
     return r.stdout + r.stderr;
   });
   for (const o of outs) assert.ok(!BARE.test(o), o);
-  assert.match(outs[0], /npx -y https:\/\/dl\.botlink\.dev\/dl\/botlink\.tgz join <invite>/);
-  assert.match(outs[1], /Usage: npx -y https:\/\/dl\.botlink\.dev\/dl\/botlink\.tgz join/);
+  assert.match(outs[0], /npx -y --allow-remote=all https:\/\/dl\.botlink\.dev\/dl\/botlink\.tgz join <invite>/);
+  assert.match(outs[1], /Usage: npx -y --allow-remote=all https:\/\/dl\.botlink\.dev\/dl\/botlink\.tgz join/);
 });
 
 test("no source file, agent doc or invite page text tells anyone to run a bare `npx botlink`", () => {

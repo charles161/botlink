@@ -13,10 +13,11 @@ import * as c from "./crypto.js";
 import * as st from "./state.js";
 import * as core from "./core.js";
 import { saveRule } from "./rules.js";
-import { chatFolder, currentSession, detectApp, headlessRun, machineName, t3ThreadFromEnv, tildeFolder } from "./session.js";
+import { chatFolder, chatSession, currentSession, cursorChatOf, detectApp, headlessRun, holderSession, machineName, t3ThreadFromEnv, tildeFolder } from "./session.js";
 import { serviceInstalledFor, configuredHere } from "./setup.js";
 import { VERSION } from "./version.js";
 import { clientDir, loadState, maybeSpawnCheck, restartNotice } from "./update.js";
+import { setMcpMode, takeStaleLine } from "./stale.js";
 import { chatStatusLines } from "./updatenote.js";
 import { BUSY_NO_WAIT } from "./limits.js";
 import { revive } from "./memberend.js";
@@ -83,18 +84,24 @@ function needsHuman(tool: string, m?: st.MemberRec | null) {
 export function tools(ctx: ToolCtx) {
   // per call: the tool's `session` argument wins (SPEC §6.7a)
   let callSession: string | null = null;
-  const session = () => ctx.session(callSession);
+  // the identity every tool of this chat uses (session.ts chatSession); given: what the app or the tool call says
+  const given = () => ctx.session(callSession);
+  const session = () => chatSession(ctx.app, given());
   // which member is this chat: its session's, else this app's member in its folder / workspace; never another app's.
   // Cursor gives its MCP server no chat id (only its shell commands get CURSOR_CONVERSATION_ID), so a Cursor chat is
   // found by app + folder, and when the folder isn't known, the one Cursor member on this computer (several: say `as`).
   const who = async (): Promise<core.Who> => ({ app: ctx.app, folders: [...new Set([chatFolder(), process.cwd()].filter((x): x is string => !!x))], roots: ctx.roots ? await ctx.roots().catch(() => []) : [], anyOfApp: ctx.app === "cursor", asWord: "as" });
-  const me = async (a: { room?: string; as?: string }) => core.pickMember(session(), a.room, a.as || null, await who());
+  // a join of this chat approved while nobody waited is finished first (core.settleApproved), as on the command line
+  const me = async (a: { room?: string; as?: string }) => {
+    const w = await who();
+    await core.settleApproved({ app: ctx.app, session: session(), cwd: chatFolder() || w.roots?.[0] || process.cwd(), wakeReady: false }).catch(() => []);
+    return core.pickMember(session(), a.room, a.as || null, w);
+  };
   const t = {
     async join(a: { invite?: string; name?: string; job?: string; wait?: boolean; app_name?: string }) {
       needsHuman("join");
       await c.ready();
       const waitFor = async (id: string | null): Promise<string> => {
-        const noSession = ctx.app === "cursor" || ctx.app === "opencode" || ctx.app === "other";
         let r: core.WaitOutcome;
         try {
           const dir = chatFolder() || (await who()).roots?.[0] || process.cwd();
@@ -102,11 +109,11 @@ export function tools(ctx: ToolCtx) {
           // the tools picks its own way to listen first and is tested when it starts listening (Kickoff 2)
           let wakeReady = false;
           try {
-            wakeReady = ctx.app !== "other" && ctx.app !== "t3" && (!!configuredHere(ctx.app, dir) || serviceInstalledFor(ctx.app));
+            wakeReady = ctx.app !== "other" && ctx.app !== "t3" && ctx.app !== "antigravity" && (!!configuredHere(ctx.app, dir) || serviceInstalledFor(ctx.app));
           } catch {
             wakeReady = false;
           }
-          r = await core.joinWait({ id, maxMs: 50_000, app: ctx.app, session: noSession ? null : session(), cwd: dir, wakeReady });
+          r = await core.joinWait({ id, maxMs: 50_000, app: ctx.app, session: session(), cwd: dir, wakeReady });
         } catch (e) {
           if (e instanceof core.AlreadyJoined) return e.message;
           throw e;
@@ -128,19 +135,18 @@ export function tools(ctx: ToolCtx) {
         return `${core.previewText(preview)}\nPropose a name (lowercase letters, digits, dashes) and a one-line job to your human, and call join again with invite, name and job once they agree.${ctx.app === "other" ? `\n${core.askAppName("app_name")}` : ""}`;
       }
       const turn: st.Turn = serviceInstalledFor(ctx.app) ? "wake" : "on_turn";
-      const noSession = ctx.app === "cursor" || ctx.app === "opencode" || ctx.app === "other";
       const dir = chatFolder() || (await who()).roots?.[0] || process.cwd();
       const t3 = t3ThreadFromEnv();
       const wake = t3 ? { via: "t3" as const, id: t3 } : ctx.app === "opencode" && callSession ? { via: "opencode" as const, id: callSession } : null;
       let r: Awaited<ReturnType<typeof core.joinCreate>>;
       let wakeReady = false;
       try {
-        wakeReady = ctx.app !== "other" && ctx.app !== "t3" && (!!configuredHere(ctx.app, dir) || serviceInstalledFor(ctx.app));
+        wakeReady = ctx.app !== "other" && ctx.app !== "t3" && ctx.app !== "antigravity" && (!!configuredHere(ctx.app, dir) || serviceInstalledFor(ctx.app));
       } catch {
         wakeReady = false;
       }
       try {
-        r = await core.joinCreate({ invite: a.invite, name: a.name, job: a.job, app: ctx.app, app_name: a.app_name, appNameWord: "app_name", turn, session: noSession ? null : session(), cwd: dir, folder: tildeFolder(dir), machine: machineName(), wake, wakeReady });
+        r = await core.joinCreate({ invite: a.invite, name: a.name, job: a.job, app: ctx.app, app_name: a.app_name, appNameWord: "app_name", turn, session: holderSession(ctx.app, given()), cursorChat: cursorChatOf(ctx.app, given()), cwd: dir, folder: tildeFolder(dir), machine: machineName(), wake, wakeReady });
       } catch (e) {
         if (e instanceof core.AlreadyJoined) return e.message; // it is in already: an answer, not an error
         throw e;
@@ -167,17 +173,16 @@ export function tools(ctx: ToolCtx) {
       needsHuman("create_room");
       await c.ready();
       if (!a.name || !a.purpose || !a.as || !a.job) throw new core.UserError("Propose the room name, its purpose, this chat's name and its job to your human first; once they say yes, call create_room with name, purpose, as and job.");
-      const noSession = ctx.app === "cursor" || ctx.app === "opencode" || ctx.app === "other";
       const dir = chatFolder() || (await who()).roots?.[0] || process.cwd();
       const t3 = t3ThreadFromEnv();
       const wake = t3 ? { via: "t3" as const, id: t3 } : ctx.app === "opencode" && callSession ? { via: "opencode" as const, id: callSession } : null;
       let wakeReady = false;
       try {
-        wakeReady = ctx.app !== "other" && ctx.app !== "t3" && (!!configuredHere(ctx.app, dir) || serviceInstalledFor(ctx.app));
+        wakeReady = ctx.app !== "other" && ctx.app !== "t3" && ctx.app !== "antigravity" && (!!configuredHere(ctx.app, dir) || serviceInstalledFor(ctx.app));
       } catch {
         wakeReady = false;
       }
-      const r = await core.createRoom({ room: a.name.replace(/^#/, ""), purpose: a.purpose, name: a.as, job: a.job, app: ctx.app, app_name: a.app_name, appNameWord: "app_name", turn: serviceInstalledFor(ctx.app) ? "wake" : "on_turn", session: noSession ? null : session(), cwd: dir, folder: tildeFolder(dir), machine: machineName(), wake, wakeReady });
+      const r = await core.createRoom({ room: a.name.replace(/^#/, ""), purpose: a.purpose, name: a.as, job: a.job, app: ctx.app, app_name: a.app_name, appNameWord: "app_name", turn: serviceInstalledFor(ctx.app) ? "wake" : "on_turn", session: holderSession(ctx.app, given()), cwd: dir, folder: tildeFolder(dir), machine: machineName(), wake, wakeReady });
       if (r.done) {
         if (r.done.status !== "approved") return r.done.text;
         const L = await import("./listen.js");
@@ -277,7 +282,7 @@ export function tools(ctx: ToolCtx) {
       if (a.wait && !a.name) return waitFor(null);
       if (!a.name) throw new core.UserError("Say which member: claim with name (and room if it is in several).");
       const dir = chatFolder() || (await who()).roots?.[0] || process.cwd();
-      const r = await core.claim(a.name, session(), a.room, ctx.app, { machine: machineName(), cwd: dir, folder: tildeFolder(dir), turn: serviceInstalledFor(ctx.app) ? "wake" : "on_turn" });
+      const r = await core.claim(a.name, holderSession(ctx.app, given()), a.room, ctx.app, { machine: machineName(), cwd: dir, folder: tildeFolder(dir), turn: serviceInstalledFor(ctx.app) ? "wake" : "on_turn" });
       return r.pending && a.wait && r.requestId ? `${r.text}\n${await waitFor(r.requestId)}` : r.text;
     },
     async presence(a: { room?: string; as?: string }) {
@@ -323,7 +328,7 @@ export function tools(ctx: ToolCtx) {
       await c.ready();
       const m = await me(a);
       needsHuman("leave", m);
-      return core.leave(m, session());
+      return core.leave(m, session(), { app: ctx.app, session: session(), cwd: chatFolder() || process.cwd() });
     },
     async label(a: { text: string; room?: string; as?: string }) {
       await c.ready();
@@ -428,6 +433,7 @@ export async function workspaceRoots(server: McpServer, env: NodeJS.ProcessEnv =
 }
 
 export async function serve(app: st.App) {
+  setMcpMode(); // lines about an old copy go into the next tool result (stale.ts)
   // the session this MCP process serves: the hooks' link (follows /clear), else the env the app gave us
   const ctx: ToolCtx = { app, session: (x) => currentSession(undefined, x).id, roots: () => workspaceRoots(server) };
   const t = tools(ctx);
@@ -440,7 +446,9 @@ export async function serve(app: st.App) {
       const out = await fn(a, extra?.signal);
       // SPEC §7.6: once per process, when a newer client was installed while this one runs
       const upd = restartNotice(APP_LABEL[app] || "your app");
-      return text(upd ? `${out}\n\nbot-link: ${upd}` : out);
+      // once per process, when this copy is older than the client its server hands out (stale.ts)
+      const behind = takeStaleLine();
+      return text([out, upd ? `bot-link: ${upd}` : null, behind].filter((x): x is string => !!x).join("\n\n"));
     } catch (e) {
       return fail(e);
     }

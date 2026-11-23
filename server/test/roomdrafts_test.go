@@ -20,6 +20,7 @@ import (
 
 	"github.com/charles161/botlink/server/internal/agentapi"
 	"github.com/charles161/botlink/server/internal/config"
+	"github.com/charles161/botlink/server/internal/faults"
 	"github.com/charles161/botlink/server/internal/roster"
 	"github.com/charles161/botlink/server/internal/sweeper"
 	"github.com/charles161/botlink/server/internal/testkit"
@@ -1369,5 +1370,51 @@ func TestRoomDraftServerCapConcurrent(t *testing.T) {
 	t.Logf("answers %v; %d open drafts at cap %d", codes, n, cap)
 	if codes[201] == 0 {
 		t.Error("no create went through at the cap")
+	}
+}
+
+// A draft deleted right after its create commits (a create at the server cap made room by evicting it): the create
+// still answers 201 with the draft as it was made, and the chat's wait answers draft_gone. The same for the replay of
+// a create (200). Nothing after the commit may read the draft back.
+func TestRoomDraftEvictedRightAfterCreate(t *testing.T) {
+	resetFaults(t)
+	c := StartCopy(t, NewDB(t), "A")
+	evict := func(context.Context, int) error {
+		_, err := c.Pool.Exec(context.Background(), `delete from room_drafts`)
+		return err
+	}
+	a := NewAgentKeys(t, "builder")
+	body := draftBody(a, wire.NewV7().String(), "acme")
+	a.ReqID = body["id"].(string)
+	faults.Set("draft_after_create", evict)
+	v := a.Do(c, "POST", "/api/v1/room-drafts", body)
+	faults.Set("draft_after_create", nil)
+	exp, _ := time.Parse(time.RFC3339Nano, v.Str("expires_at"))
+	if v.Status != 201 || v.Str("id") != a.ReqID || v.Str("status") != "open" || v.Str("room_name") != "acme" ||
+		v.Str("room_purpose") != "fix the build" || v.Str("name") != "builder" || !wire.IsUUID(v.Str("member_id")) ||
+		len(v.Str("match_code")) != 6 || v.Str("confirm_url") != c.URL+"/create/"+a.ReqID || !exp.After(time.Now()) {
+		t.Fatalf("create of a draft evicted right after: %s", v)
+	}
+	if n := draftRows(t, c); n != 0 {
+		t.Fatalf("%d drafts left: the fault did not evict", n)
+	}
+	if r := a.draftWait(c, 0); r.Status != 404 || r.Code() != "draft_gone" {
+		t.Errorf("wait of the evicted draft: %s", r)
+	}
+
+	b := NewAgentKeys(t, "second")
+	body = draftBody(b, wire.NewV7().String(), "beta")
+	b.ReqID = body["id"].(string)
+	first := b.Do(c, "POST", "/api/v1/room-drafts", body)
+	if first.Status != 201 {
+		t.Fatalf("create: %s", first)
+	}
+	faults.Set("draft_after_create", evict)
+	r := b.Do(c, "POST", "/api/v1/room-drafts", body)
+	faults.Set("draft_after_create", nil)
+	for _, k := range []string{"id", "status", "room_name", "room_purpose", "name", "member_id", "match_code", "expires_at", "confirm_url"} {
+		if r.Status != 200 || r.Str(k) != first.Str(k) {
+			t.Fatalf("replay of a draft evicted right after: %s (first: %s)", r, first)
+		}
 	}
 }

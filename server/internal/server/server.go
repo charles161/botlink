@@ -20,6 +20,7 @@ import (
 	"github.com/charles161/botlink/server/internal/analytics"
 	"github.com/charles161/botlink/server/internal/appapi"
 	"github.com/charles161/botlink/server/internal/auth"
+	"github.com/charles161/botlink/server/internal/clientgate"
 	"github.com/charles161/botlink/server/internal/config"
 	"github.com/charles161/botlink/server/internal/events"
 	"github.com/charles161/botlink/server/internal/httpx"
@@ -144,6 +145,7 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	s.Admin.Routes(appMux)
 	s.Plans.Routes(appMux)
 	pg.Routes(appMux)
+	pages.NewStars(cfg).Routes(appMux) // GET /site/github.json: the header's GitHub star count
 	health := http.NewServeMux()
 	health.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
@@ -155,7 +157,18 @@ func New(ctx context.Context, cfg *config.Config) (*Server, error) {
 	mux := http.NewServeMux()
 	mux.Handle("/healthz", health)
 	mux.Handle("/readyz", health)
-	mux.Handle("/api/v1/", gate.Wrap(apiMux)) // only the agent API: /dl, the manifest and /readyz stay open to old clients
+	// every agent API answer names the client this server hands out now; joins, room drafts and moves from an outdated
+	// client are refused with the command that runs the current one (clientgate/joingate.go)
+	var current func() clientgate.Current
+	if cf != nil {
+		current = clientgate.Cached(5*time.Second, func() clientgate.Current {
+			v, u := cf.Current(cfg.ClientURL)
+			n, _, _ := clientgate.NewestRelease(cfg.ClientTGZ)
+			return clientgate.Current{Version: v, URL: u, Release: n}
+		})
+	}
+	joinGate := pre.JoinGate.WithCurrent(current)
+	mux.Handle("/api/v1/", joinGate.Wrap(gate.Wrap(apiMux))) // only the agent API: /dl, the manifest and /readyz stay open to old clients
 	if cf != nil {
 		mux.Handle("/dl/botlink.tgz", cf.Download())
 		mux.Handle("/dl/botlink.json", cf.Info(cfg.ClientURL))

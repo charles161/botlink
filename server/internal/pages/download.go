@@ -154,6 +154,19 @@ func (c *ClientFile) CurrentURL(base string) string {
 	return VersionedURL(base, cur.sha)
 }
 
+// Current is the version of the tarball served right now and its versioned URL ("", base when there is none).
+func (c *ClientFile) Current(base string) (version, url string) {
+	if c == nil {
+		return "", base
+	}
+	f, _, cur, err := c.open()
+	if err != nil {
+		return "", base
+	}
+	f.Close()
+	return cur.version, VersionedURL(base, cur.sha)
+}
+
 // Versioned serves GET|HEAD /dl/botlink-<16 hex>.tgz: the current tarball under its own name, cached for a year
 // (immutable). An older version redirects (302, no-store) to the current one: only one tarball is on disk. Anything
 // else under /dl/ is 404.
@@ -193,7 +206,7 @@ func (c *ClientFile) Versioned() http.Handler {
 	})
 }
 
-// Download serves GET|HEAD /dl/botlink.tgz: people and agents run it with `npx -y https://<api host>/dl/botlink.tgz …`.
+// Download serves GET|HEAD /dl/botlink.tgz: people and agents run it with `npx -y --allow-remote=all https://<api host>/dl/botlink.tgz …`.
 func (c *ClientFile) Download() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !methodOK(w, r) {

@@ -4,6 +4,9 @@
  *                                 (503 high_load: the server's Retry-After plus jitter, at most 2 min; limits.ts)
  *   401 stale_timestamp        -> once, with offset = server_time - local time (persisted)
  *   426 client_too_old         -> ClientTooOld (below the server's minimum release: one self-update started, never retried; tooold.ts)
+ *   409 client_outdated        -> ClientOutdated (a join, room draft or move from a copy older than the server's client:
+ *                                 the exact command that runs the current one; stale.ts)
+ * Every answer names the client the server hands out now; stale.ts reads it (no extra request).
  *   everything else            -> ApiError to the caller
  */
 import { nonceHex } from "./crypto.js";
@@ -14,6 +17,7 @@ import { clientTooOld } from "./tooold.js";
 import { VERSION } from "./version.js";
 import { runningRelease } from "./update.js";
 import { serverFetch } from "./net.js";
+import { STALE_HEADER, clientOutdated, noteServerClient } from "./stale.js";
 
 export interface Signer {
   pk: string;
@@ -142,8 +146,10 @@ export class Api {
     const url = new URL(o.path.replace(/^\//, ""), this.base);
     const target = url.pathname + url.search;
     // the server's minimum client release (SPEC §7.6) compares X-Botlink-Client-Release (the signed release this copy
-    // was installed from; none without one); X-Botlink-Client-Version is for logs only (every build is 1.0.0-dev)
-    const headers: Record<string, string> = { Accept: "application/json", "User-Agent": "botlink-client/1", "X-Botlink-Client-Version": VERSION };
+    // was installed from; none without one); its join gate compares X-Botlink-Client-Version (one per release)
+    // X-Botlink-Client-Stale: refuse = this copy's join, room draft and move are refused when it is older than the
+    // client the server hands out (every client release has its own version; stale.ts)
+    const headers: Record<string, string> = { Accept: "application/json", "User-Agent": "botlink-client/1", "X-Botlink-Client-Version": VERSION, [STALE_HEADER]: "refuse" };
     const release = runningRelease();
     if (release > 0) headers["X-Botlink-Client-Release"] = String(release);
     if (raw) headers["Content-Type"] = "application/json";
@@ -177,6 +183,12 @@ export class Api {
     } catch {
       json = null;
     }
+    try {
+      // (quiet on the refusal itself: ClientOutdated below says it, with the command)
+      noteServerClient(this.base.origin, res.headers, res.status === 409 && json?.error?.code === "client_outdated");
+    } catch {
+      /* never in the way of the answer */
+    }
     // a 2xx that is not JSON is not bot-link's server answering (a proxy page while the server or the tunnel is
     // unwell): a passing network problem, retried and never read as an answer (fix-all CLIENTGLUE 7)
     if (res.status >= 200 && res.status < 300 && text.trim() && json === null) throw new NetworkError(`${this.base.host} replied with a page that is not bot-link's (status ${res.status})`);
@@ -187,6 +199,8 @@ export class Api {
     const err = json?.error || {};
     // below the server's minimum: one plain sentence and one background update (tooold.ts); not retried
     if (res.status === 426) throw clientTooOld(this.base.origin, err);
+    // a join, room draft or move from a copy older than the server's client: nothing was made (stale.ts)
+    if (res.status === 409 && err.code === "client_outdated") throw clientOutdated(this.base.origin, err);
     const ra = Number(res.headers.get("retry-after")) || err.retry_after_s || null;
     const shaped = typeof err.code === "string" && typeof err.message === "string";
     throw new ApiError(res.status, String(err.code || `http_${res.status}`), String(err.message || `the server replied with status ${res.status}`), err.details ?? null, ra, err.server_time ?? null, shaped);

@@ -38,6 +38,7 @@ export const HOST_TABLE = [
   ["/rooms", "app", "page"],
   ["/rooms/{id}", "app", "page"],
   ["/security.html", "site", "file"],
+  ["/site/github.json", "web", "call"],
   ["/terms.html", "site", "file"],
   ["/trust.html", "site", "file"],
   ["/usage", "app", "page"],

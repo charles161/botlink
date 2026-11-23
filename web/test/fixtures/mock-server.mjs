@@ -77,7 +77,7 @@ class E extends Error { constructor(status, code, message, details, retryAfter) 
 let db;
 function reset() {
   db = { accounts: new Map(), sessions: new Map(), devices: new Map(), rooms: new Map(), invites: new Map(), personInvites: new Map(),
-    joinRequests: new Map(), personRequests: new Map(), attention: new Map(), humanChecks: new Map(), creds: new Map(), mutes: new Set(), drafts: new Map() };
+    joinRequests: new Map(), personRequests: new Map(), attention: new Map(), humanChecks: new Map(), creds: new Map(), mutes: new Set(), drafts: new Map(), rejectFails: new Set() };
 }
 reset();
 const sse = new Set();
@@ -404,6 +404,7 @@ route("POST", /^\/app\/v1\/join-requests\/([0-9a-f-]{36})\/approve$/, ({ sess, m
 });
 route("POST", /^\/app\/v1\/join-requests\/([0-9a-f-]{36})\/reject$/, ({ sess, m }) => {
   const j = db.joinRequests.get(m[1]); if (!j || j.for_account !== sess.account_id) throw new E(404, "not_found", "Not found.");
+  if (db.rejectFails.has(j.id)) throw new E(503, "unavailable", "Try again in a moment.");
   if (j.status !== "pending") throw new E(409, "already_decided", "Already decided."); j.status = "rejected"; changed(); return { ok: true };
 });
 // item 11: another person of the room takes over a join that used someone else's chat invite (once)
@@ -532,6 +533,11 @@ const eventUrlMock = installEventUrls({ route, E, getDb: () => db, uuid, now, la
 const batchMock = installBatch({ route, E, getDb: () => db, uuid, now, rawPk, deviceFp, appendEntry, consumeHumanCheck, activity, membershipAttention, changed });
 
 // ── test hooks (never part of the real API) ──────────────────────────────────
+// The GitHub star count the server holds (GET /site/github.json, server/internal/pages/github_stars.go): {"stars": N}
+// sets it (the endpoint leaves it out under 50, like the server), {"stars": null} clears it, {"status": 500} makes the
+// endpoint fail (the real one never does; the page must cope anyway). Survives /__mock/reset like the server's cache.
+let githubStars = { stars: null, status: 200 };
+route("POST", /^\/__mock\/github$/, ({ body }) => { githubStars = { stars: body.stars ?? null, status: body.status ?? 200 }; return { ok: true }; }, { open: true, nocsrf: true });
 route("POST", /^\/__mock\/reset$/, () => { reset(); return { ok: true }; }, { open: true, nocsrf: true });
 route("POST", /^\/__mock\/join$/, ({ body }) => {
   const r = [...db.rooms.values()].find((x) => (body.room_id ? x.id === body.room_id : x.name === body.room) && !x.deleted);
@@ -542,11 +548,13 @@ route("POST", /^\/__mock\/join$/, ({ body }) => {
   if (body.kind === "claim") { const mem = [...r.members.values()].find((x) => x.name === name); if (!mem) throw new E(404, "member_not_found", "No member."); memberId = mem.id; }
   const ed = body.ed || rawPk(), x = body.x || rawPk();
   const j = { id: uuid(), kind: body.kind || "join", room_id: r.id, room_name: r.name, member_id: memberId, name, job: body.job ?? "Fixed the checkout double-charge bug (commit a1b2c3). Knows the payment flow.", app: body.app || "claude-code", app_name: body.app_name ?? null,
-    machine: body.machine || "adams-macbook", folder: body.folder || "~/acme", turn: body.turn || "wake", turn_raw: body.turn || "wake", match_code: body.match_code || code(6), ed25519_pk: ed, x25519_pk: x,
-    invite_label: `your chat invite for #${r.name}`, created_at: now(), expires_at: later(body.expires_in_s || 900), for_account: forAcct, status: "pending" };
+    machine: "machine" in body ? body.machine : "adams-macbook", folder: "folder" in body ? body.folder : "~/acme", turn: body.turn || "wake", turn_raw: body.turn || "wake", match_code: body.match_code || code(6), ed25519_pk: ed, x25519_pk: x,
+    invite_label: `your chat invite for #${r.name}`, created_at: body.age_s ? new Date(Date.now() - body.age_s * 1000).toISOString() : now(), expires_at: later(body.expires_in_s || 900), for_account: forAcct, status: "pending" };
   db.joinRequests.set(j.id, j); changed();
   return { id: j.id, match_code: j.match_code, fingerprint: memberFp(ed, x), member_id: memberId };
 }, { open: true, nocsrf: true });
+// a join request's reject answers 503 until cleared (a partial failure of "Reject all"): {id, fail: true|false}
+route("POST", /^\/__mock\/reject-fails$/, ({ body }) => { if (body.fail === false) db.rejectFails.delete(body.id); else db.rejectFails.add(body.id); return { ok: true }; }, { open: true, nocsrf: true });
 route("POST", /^\/__mock\/attention$/, ({ body }) => {
   const r = body.room ? [...db.rooms.values()].find((x) => x.name === body.room && !x.deleted) : null;
   const acct = body.email ? accountByEmail(body.email).id : r.owner;
@@ -601,6 +609,11 @@ http.createServer(async (req, res) => {
     const docs = { "/agents.md": [join(ROOT, "docs", "agents.md"), "text/markdown; charset=utf-8"], "/llms.txt": [join(ROOT, "docs", "llms.txt"), "text/plain; charset=utf-8"], "/envelope.md": [join(ROOT, "crypto", "ENVELOPE.md"), "text/markdown; charset=utf-8"], "/api/openapi.yaml": [join(ROOT, "api", "openapi.yaml"), "application/yaml"] };
     if (docs[p]) return serveFile(res, ...docs[p]);
     if (p === "/healthz") { res.end("ok"); return; }
+    if (p === "/site/github.json" && req.method === "GET") {
+      if (githubStars.status !== 200) { res.writeHead(githubStars.status, { "Content-Type": "text/plain" }); return res.end("error"); }
+      res.writeHead(200, { "Content-Type": "application/json", "Cache-Control": "public, max-age=300" });
+      return res.end(Number.isInteger(githubStars.stars) && githubStars.stars >= 50 ? `{"stars":${githubStars.stars}}` : "{}");
+    }
     if (p.startsWith("/assets/")) {
       const file = normalize(join(PUBLIC, p));
       if (!file.startsWith(PUBLIC)) { res.writeHead(404); return res.end(); }

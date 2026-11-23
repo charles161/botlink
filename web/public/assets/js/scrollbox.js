@@ -86,5 +86,5 @@ export function keyed(els, keyOf, { fromEnd = false } = {}) {
   return fromEnd ? out.reverse() : out;
 }
 
-/** Key for a "What needs you" card (kind + the request/subject it's about). */
-export const needKey = (el) => `${el.dataset.need}|${el.getAttribute("aria-labelledby") || el.querySelector(".need-title")?.textContent || ""}`;
+/** Key for a "What needs you" card (kind + the request/subject it's about; a card of tries keeps its own across tries). */
+export const needKey = (el) => el.dataset.needKey || `${el.dataset.need}|${el.getAttribute("aria-labelledby") || el.querySelector(".need-title")?.textContent || ""}`;

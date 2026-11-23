@@ -48,9 +48,9 @@ function cli(home: string, cwd: string, env: Record<string, string>, ...args: st
   });
 }
 
-async function joinAs(home: string, room: any, owner: any, cwd: string, name: string, app: st.App, session: string | null) {
+async function joinAs(home: string, room: any, owner: any, cwd: string, name: string, app: st.App, session: string | null, appName = "Some App") {
   return on(home, async () => {
-    const r = await core.joinCreate({ invite: f.invite(room, owner), name, job: `${name} job`, app, app_name: app === "other" ? "Some App" : null, turn: app === "claude-code" ? "on_turn" : "listening", session, cwd, folder: cwd.replace(home, "~"), machine: "mac" });
+    const r = await core.joinCreate({ invite: f.invite(room, owner), name, job: `${name} job`, app, app_name: app === "other" ? appName : null, turn: app === "claude-code" ? "on_turn" : "listening", session, cwd, folder: cwd.replace(home, "~"), machine: "mac" });
     f.approve(r.req.id);
     const w: any = await core.joinWait({ maxMs: 3000 });
     assert.equal(w.status, "approved", w.text);
@@ -166,7 +166,8 @@ test("undetected app ('other'): resolves only an 'other' member by folder (singl
   await joinAs(home, room, adam, dir, "x-one", "other", null);
   const one = await cli(home, dir, { BOTLINK_APP: "other" }, "status");
   assert.match(one.stdout, /Acting as: x-one in #/);
-  await joinAs(home, room, adam, dir, "x-two", "other", null);
+  // (one chat, one identity per room: two undetected members of one folder and room come from two apps)
+  await joinAs(home, room, adam, dir, "x-two", "other", null, "Another App");
   const two = await cli(home, dir, { BOTLINK_APP: "other" }, "inbox");
   assert.notEqual(two.status, 0);
   assert.match(two.stdout + two.stderr, /Several bot-link members could be this chat \(x-one in #ot\d+, x-two in #ot\d+\)\. Say which with --as/);

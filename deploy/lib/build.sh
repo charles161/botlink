@@ -109,3 +109,61 @@ staging_client_pins_only() {
   keys="$(tar -xzOf "$1" package/dist/release.js 2>/dev/null | grep -oE '[0-9a-f]{64}' | sort -u)"
   [ -n "$pk" ] && [ "$keys" = "$pk" ] || { log "staging: the built client does not pin exactly the staging key; not releasing it"; return 1; }
 }
+
+# check_client_version <new release dir> <live release dir>: every client release has its own version (incident 21 Nov
+# 2026: the client changed under the same 1.0.0 and chats kept running the old copy from npx's cache). Refuses when the
+# new dl/botlink.tgz differs from the live one (its signed manifest names the live tarball's sha256 and version) while
+# its version string is the same; "differs" is the files inside, so a re-pack of the same files passes. No live
+# release (a first deploy) or no live tarball: nothing to compare. A version below the live one is logged, not refused
+# (deploying an older commit on purpose).
+check_client_version() {
+  local new="$1/dl/botlink.tgz" live="$2/dl/botlink.tgz" mf="$2/dl/botlink.manifest.json" out
+  [ -f "$new" ] || { log "client version check: no client tarball in $1"; return 1; }
+  [ -f "$live" ] || [ -f "$mf" ] || return 0
+  out="$(python3 -I - "$new" "$live" "$mf" <<'PY'
+import hashlib, json, os, re, sys, tarfile
+new, live, mf = sys.argv[1:4]
+def sha(p):
+    return hashlib.sha256(open(p, "rb").read()).hexdigest()
+def files(p):
+    out = {}
+    with tarfile.open(p, "r:gz") as t:
+        for m in t.getmembers():
+            if m.isfile():
+                out[m.name] = hashlib.sha256(t.extractfile(m).read()).hexdigest()
+    return out
+def version(p):
+    with tarfile.open(p, "r:gz") as t:
+        return str(json.load(t.extractfile("package/package.json")).get("version", ""))
+nv, nsha = version(new), sha(new)
+lv, lsha = None, None
+try:
+    m = json.loads(json.load(open(mf))["manifest"])
+    lv, lsha = str(m.get("version", "")), str(m.get("sha256", ""))
+except Exception:
+    pass
+if os.path.isfile(live):
+    lsha2 = sha(live)
+    if lsha and lsha != lsha2:
+        print("warn the live manifest names another tarball than the live one; comparing with the live tarball")
+    lsha, lv = lsha2, version(live)
+if nsha == lsha:
+    print(f"same client {nv} (tarball unchanged)"); sys.exit(0)
+if nv != lv:
+    sv = lambda v: tuple(int(x) for x in re.findall(r"\d+", v.split("-")[0])[:3]) if re.match(r"^\d+\.\d+\.\d+", v) else None
+    a, b = sv(nv), sv(lv)
+    note = " (BELOW the live version: an older client goes out)" if a and b and a < b else ""
+    print(f"new client {nv} replaces {lv}{note}"); sys.exit(0)
+if os.path.isfile(live) and files(new) == files(live):
+    print(f"same client {nv} (same files, packed again)"); sys.exit(0)
+print(f"REFUSE {nv}"); sys.exit(3)
+PY
+)"
+  local rc=$?
+  while IFS= read -r l; do [ -n "$l" ] && log "client version check: $l"; done <<<"$out"
+  if [ $rc = 3 ]; then
+    log "client version check: REFUSED: the client changed but its version is still $(sed -n 's/^REFUSE //p' <<<"$out"), the version of the release that is live. Every client release needs its own version (npx and anything keyed on the version would keep the old copy): run \`cd client && npm run release:bump\`, commit, evaluate and deploy that commit"
+    return 1
+  fi
+  [ $rc = 0 ] || { log "client version check: could not compare the client tarballs (exit $rc)"; return 1; }
+}

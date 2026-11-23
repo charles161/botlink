@@ -97,6 +97,9 @@ func TestCheckConfigRefusesEachStartupRefusal(t *testing.T) {
 	dl := t.TempDir()
 	os.WriteFile(filepath.Join(dl, "botlink.tgz"), []byte("x"), 0o644)
 	os.WriteFile(filepath.Join(dl, "botlink.manifest.json"), []byte(`{"manifest":"{\"counter\":3}","sig":"x","key":"k"}`), 0o644)
+	dlv := t.TempDir()
+	os.WriteFile(filepath.Join(dlv, "botlink.tgz"), []byte("x"), 0o644)
+	os.WriteFile(filepath.Join(dlv, "botlink.manifest.json"), []byte(`{"manifest":"{\"counter\":3,\"version\":\"1.0.1\"}","sig":"x","key":"k"}`), 0o644)
 	for _, k := range []struct {
 		name, want string
 		mod        map[string]string
@@ -110,6 +113,8 @@ func TestCheckConfigRefusesEachStartupRefusal(t *testing.T) {
 		{"human check real without the Turnstile secret", "BOTLINK_TURNSTILE_SECRET", map[string]string{"BOTLINK_TURNSTILE_SECRET": ""}},
 		{"a minimum client release above the served manifest", "BOTLINK_MIN_CLIENT_RELEASE 5 is above", map[string]string{"BOTLINK_MIN_CLIENT_RELEASE": "5", "BOTLINK_DL_DIR": dl}},
 		{"a minimum client release that is not a number", "BOTLINK_MIN_CLIENT_RELEASE", map[string]string{"BOTLINK_MIN_CLIENT_RELEASE": "soon"}},
+		{"a minimum join client version above the served client", "BOTLINK_MIN_JOIN_CLIENT_VERSION 1.0.2 is above the newest published client (1.0.1", map[string]string{"BOTLINK_MIN_JOIN_CLIENT_VERSION": "1.0.2", "BOTLINK_DL_DIR": dlv}},
+		{"a minimum join client version that is not a version", "BOTLINK_MIN_JOIN_CLIENT_VERSION", map[string]string{"BOTLINK_MIN_JOIN_CLIENT_VERSION": "soon"}},
 		{"test faults outside dev", "BOTLINK_TEST_FAULTS", map[string]string{"BOTLINK_TEST_FAULTS": "x"}},
 		{"a database URL that cannot be read", "BOTLINK_DATABASE_URL", map[string]string{"BOTLINK_DATABASE_URL": "postgres://u:SECRET-DB-PW-1@[bad"}},
 		{"a payment gateway without its keys in shape (paywall on)", "BOTLINK_DODO_WEBHOOK_KEY", map[string]string{"BOTLINK_PAYWALL": "on", "BOTLINK_BILLING_GATEWAY": "dodo",

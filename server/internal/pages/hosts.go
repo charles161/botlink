@@ -61,6 +61,7 @@ var HostTable = []HostRoute{
 	{"/og-image.png", Web, File},
 	{"/manifest.json", Web, File},
 	{"/assets/", Web, File},
+	{"/site/github.json", Web, Call}, // the header's GitHub star count (github_stars.go); never moves, 404 on the API host
 
 	{"/agents.md", All, File},
 	{"/llms.txt", All, File},

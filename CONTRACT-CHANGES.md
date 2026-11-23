@@ -309,3 +309,25 @@ Change: JoinRequestView gains `approver_account` (required; `join_requests.for_a
 Spec ambiguity: §5.4 says "the account the invite belongs to", docs/protocol (join-and-approval.md §5, member-list.md) say "the member's person" (the weaker rule), and neither mentions item 11's takeover, under which the approving person is legitimately not the invite's person. Proposed: §5.4 reads "signed by a device of the account the request is addressed to: the invite's person, or the one person who took the pending join over, which the client tells the chat"; docs/protocol follows.
 Deploy order: a client from this change refuses to join through a server without `approver_account`: deploy the server first (the /dl/ client ships with it).
 Files: api/openapi.yaml (JoinRequestView), server/internal/agentapi/join.go, client/src/core.ts, client/src/roster.ts, client/src/state.ts.
+
+## 2026-11-21 · fix-rejoin-pending · one chat, one identity per room (join answers; no schema change)
+What: founder bug 21 Nov 2026: an OpenCode chat (no session id) was told its own
+waiting request's name "is already taken", and after approval asked again under three new names, all waiting at once.
+Server, `POST /api/v1/join-requests` (kind join):
+1. A name held only by a waiting request (not a member) stays `409 name_taken` (installed clients know only that code
+   and keep their answer) with `details.pending: true` and `details.same_machine` (the waiting request names the
+   computer this one names). The message says the name waits for approval. A member's name: unchanged.
+2. New `409 join_pending` (`details.name`): this room already has a waiting join from the same person's invite,
+   computer, folder, app, app name and session under another name. New `409 already_member` (`details.name`): a member
+   with those words and that holder session is in the room. Exempt: Cursor without a session id (two Cursor chats in
+   one folder are two chats, H2); any request without a computer or folder. A removed member or a decided request no
+   longer counts. Older clients show the server's sentence quoted (core.explain), which says not to join again.
+Not a security control: computer, folder, app name and session are the client's unsigned display words; it guards
+honest but confused clients. Copying another chat's words with a leaked invite holds that chat off for one request's
+lifetime, which holding its name or the room's ten waiting requests already allowed; the person sees and rejects
+that card.
+Client: own request and member found by the app as the room sees it (OpenCode detected = undetected naming itself
+OpenCode), the session or the folder; nothing new is sent for a room where the chat already waits or is a member; a
+join approved while nobody waited is finished by the chat's next command.
+Files: server/internal/agentapi/join.go, api/openapi.yaml, client/src/{core,cli,mcp,memberend}.ts, client/test/fake-server.ts,
+server/test/rejoin_pending_test.go, client/test/rejoinpending.test.ts, evals/scenarios/join/{sessionless-*,dumb-model-*}.

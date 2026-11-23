@@ -26,4 +26,5 @@ email-domain * db.internal
 email-domain server/internal/adminapi/metrics_test.go gmail.com
 email-domain client/test/outscan.test.ts github.com
 email-domain server/internal/config/source_test.go github.com
+email-domain server/internal/pages/github_stars_test.go github.com
 

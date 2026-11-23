@@ -254,11 +254,19 @@ func (a *API) postJoinRequest(w http.ResponseWriter, r *http.Request, c *Caller)
 			if taken, err := nameTaken(ctx, tx, inv.RoomID, j.Name); err != nil {
 				return err
 			} else if taken {
+				if held, err := memberHolds(ctx, tx, inv.RoomID, j.Name); err != nil {
+					return err
+				} else if !held {
+					return pendingNameTaken(ctx, tx, inv.RoomID, &j)
+				}
 				sugg, err := suggestName(ctx, tx, inv.RoomID, j.Name)
 				if err != nil {
 					return err
 				}
 				return httpx.E(409, "name_taken", "That name is taken in this room.").With("suggestion", sugg)
+			}
+			if err := oneWaitingJoin(ctx, tx, inv, &j); err != nil {
+				return err
 			}
 			memberID = wire.NewV7().String()
 		case "claim":
@@ -299,11 +307,7 @@ func (a *API) postJoinRequest(w http.ResponseWriter, r *http.Request, c *Caller)
 			case store.IsUniqueViolation(err, "join_requests_pending_code") && attempt < 20:
 				continue
 			case store.IsUniqueViolation(err, "join_requests_pending_name"):
-				sugg, serr := suggestName(ctx, tx, inv.RoomID, j.Name)
-				if serr != nil {
-					return serr
-				}
-				return httpx.E(409, "name_taken", "That name is taken in this room.").With("suggestion", sugg)
+				return pendingNameTaken(ctx, tx, inv.RoomID, &j)
 			case store.IsUniqueViolation(err, "join_requests_pending_key"):
 				return httpx.E(409, "key_in_use", "This key is already in use. Make a new one.")
 			case store.IsUniqueViolation(err, "join_requests_pkey"):
@@ -332,6 +336,89 @@ func (a *API) postJoinRequest(w http.ResponseWriter, r *http.Request, c *Caller)
 
 // reservedNames are never member names: bot-link's own notes (wake tests, notices) speak as these (security review).
 var reservedNames = map[string]bool{"bot-link": true, "botlink": true, "system": true}
+
+// pendingNameTaken: the name is held by a request that still waits, not by a member (founder bug 21 Nov 2026: a chat
+// was told its own waiting request's name "is already taken" and to try name-2). It stays 409 name_taken so that
+// installed clients, which know only that code, answer as before; details.pending tells a newer client that the
+// name waits for approval, and details.same_machine that the waiting request names the computer this one names.
+// The computer name is the client's own unsigned display word: a hint for the client's wording, nothing more.
+func pendingNameTaken(ctx context.Context, q store.Q, roomID string, j *joinCreate) error {
+	sugg, err := suggestName(ctx, q, roomID, j.Name)
+	if err != nil {
+		return err
+	}
+	var machine string
+	err = q.QueryRow(ctx, `select machine from join_requests where room_id = $1 and name = $2 and kind = 'join' and status = 'pending'`,
+		roomID, j.Name).Scan(&machine)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return err
+	}
+	return httpx.E(409, "name_taken", "A chat's request to join under that name is waiting for approval in this room.").
+		With("suggestion", sugg).With("pending", true).With("same_machine", j.Machine != "" && machine == j.Machine)
+}
+
+// oneWaitingJoin: one chat, one identity per room. At most one waiting join per room, person invited, computer, folder,
+// app, app name and session, and none once a member with those words (and that holder session) is in the room
+// (founder bug 21 Nov 2026: one OpenCode chat asked as opencode-2, opencode-mj and sec-research, all waiting at once,
+// after its first request was approved).
+// A guard for honest but confused clients, NOT a security control: computer, folder, app name and session are the
+// client's own unsigned words. It never blocks another app, app name, session, folder or computer, another person's
+// invite, or a Cursor chat without a session id (Cursor gives bot-link no chat id; two Cursor chats in one folder are
+// two chats: H2). The same name again is the name rule's answer (pendingNameTaken), not this one. Someone holding the
+// invite who copies a chat's words can hold this off for one request's lifetime; holding a name or the room's ten
+// waiting requests already allows as much, and the person sees and rejects that card.
+func oneWaitingJoin(ctx context.Context, q store.Q, inv *Invite, j *joinCreate) error {
+	session := ""
+	if j.SessionID != nil {
+		session = *j.SessionID
+	}
+	appName := ""
+	if j.AppName != nil {
+		appName = *j.AppName
+	}
+	if j.Machine == "" || j.Folder == "" || (j.App == "cursor" && session == "") {
+		return nil
+	}
+	// the chat is a member of this room already (the founder's chat asked under three more names after its first was
+	// approved): the same words, held by no other chat session
+	var name string
+	err := q.QueryRow(ctx, `select name from members
+		where room_id = $1 and account_id = $2 and removed_at is null
+		  and machine = $3 and folder = $4 and app = $5 and coalesce(app_name, '') = $6 and coalesce(holder_session, '') = $7
+		order by joined_at limit 1`,
+		inv.RoomID, inv.AccountID, j.Machine, j.Folder, j.App, appName, session).Scan(&name)
+	if err == nil {
+		return httpx.E(409, "already_member", "A chat on this computer is already "+name+" in this room, from this folder. Don't join again and don't pick another name: this chat is "+name+
+			" (if it lost that membership, your human removes "+name+" on the room page first, then this chat joins again).").With("name", name)
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return err
+	}
+	err = q.QueryRow(ctx, `select name from join_requests
+		where room_id = $1 and for_account_id = $2 and kind = 'join' and status = 'pending' and expires_at > now()
+		  and machine = $3 and folder = $4 and app = $5 and coalesce(app_name, '') = $6 and coalesce(session_id, '') = $7 and name <> $8
+		order by created_at limit 1`,
+		inv.RoomID, inv.AccountID, j.Machine, j.Folder, j.App, appName, session, j.Name).Scan(&name)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	return httpx.E(409, "join_pending", "A chat on this computer already asked to join this room from this folder as "+name+
+		", and that request is waiting for approval. Don't join again and don't pick another name: wait for that request (join --wait), or ask your human to approve or reject it.").
+		With("name", name)
+}
+
+// memberHolds: a member (or a reserved word) holds the name, not only a waiting request.
+func memberHolds(ctx context.Context, q store.Q, roomID, name string) (bool, error) {
+	if reservedNames[name] {
+		return true, nil
+	}
+	var held bool
+	err := q.QueryRow(ctx, `select exists(select 1 from members where room_id = $1 and name = $2 and removed_at is null)`, roomID, name).Scan(&held)
+	return held, err
+}
 
 func nameTaken(ctx context.Context, q store.Q, roomID, name string) (bool, error) {
 	if reservedNames[name] {

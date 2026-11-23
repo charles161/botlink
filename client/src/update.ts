@@ -55,6 +55,10 @@ export interface UpdateState {
   too_old?: { at: number; need?: string; server: string };
   /** when the server's "too old" answer last started an update (at most one per 30 min, never cleared) */
   too_old_update_at?: number;
+  /** the client the server handed out on its last answer (stale.ts): what selfCmd names for this same release */
+  server_client?: { origin: string; version: string; url: string | null; release: number | null; at: number };
+  /** when being behind the server's client last started an update (stale.ts; at most one per 30 min) */
+  behind_update_at?: number;
 }
 
 /** Why an update did not happen, in the words a person can act on. */

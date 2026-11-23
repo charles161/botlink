@@ -10,7 +10,8 @@ Covered: three waiting, tick two, approve (one check, one request, the third sti
 no control or shortcut ticks several; a sixth tick refused; a card that changes after its tick loses it and is not
 sent; the re-read before signing catches a change (nothing signed or sent); batch_changed, room_full, a name clash and
 human_check_failed (nothing approved, said plainly); one waiting chat (no tick box); two rooms (ticks never cross);
-moves and person requests (no tick box); the single Approve with ticks present; a reload clears ticks; the room page;
+moves and person requests (no tick box); a card of tries (needs-tries.js) counts as one chat and ticks only its newest;
+the single Approve with ticks present; a reload clears ticks; the room page;
 the mock contract itself (400 for 0, 6 or repeated items, a check for one set refuses another, a used check).
 Desktop 1440x900 and phone 390x844, light and dark: 0 console errors, no horizontal overflow, no forbidden words, no
 text under 13px, tap targets of 44px. Screenshots: web/shots/<vp>[-dark]-31*-batch-*.png
@@ -449,11 +450,12 @@ def flow(b, base, vp):
             tw = card(G, jg[n]["id"]).locator(".need-twins").inner_text()
             G.check(GROUP_LINE in tw and OLD_LINE not in tw, f"mixed: {n} in the group {tw!r}")
 
-        # ── 11b. two requests that run in the same place are never ticked into one batch ──
+        # ── 11b. two requests that run in the same place are never ticked into one batch (here both name no computer,
+        #         so they are two cards, not one card of tries: needs-tries.js) ──
         L = run("Lou")
         rl2 = new_room(L, "alike")
-        jl2 = {n: L.mock("join", {"room_id": rl2, "name": n, "machine": "adams-macbook", "folder": f, "job": f"Works on {n}."})
-               for n, f in (("bugfix", "~/acme"), ("deployer", "~/acme"), ("writer", "~/docs"))}
+        jl2 = {n: L.mock("join", {"room_id": rl2, "name": n, "machine": m, "folder": f, "job": f"Works on {n}."})
+               for n, m, f in (("bugfix", None, "~/acme"), ("deployer", None, "~/acme"), ("writer", "adams-macbook", "~/docs"))}
         home(L)
         tick(L, jl2["bugfix"]["id"])
         expect(box(L, jl2["deployer"]["id"])).to_be_enabled()
@@ -472,6 +474,23 @@ def flow(b, base, vp):
         # the single Approve of a lookalike is unchanged
         card(L, jl2["bugfix"]["id"]).get_by_role("button", name="Approve", exact=True).click(); approve_dialog(L)
         L.check(state(L, jl2["bugfix"]["id"]) == "approved", "same place: single approval of bugfix")
+
+        # ── 11c. the same computer, folder and app: one card of tries; only the request it shows (the newest) has a tick
+        #         box, so two tries never go into one batch; the older one is approved on its own afterwards ──
+        rl3 = new_room(L, "alike-2")
+        jl3 = {n: L.mock("join", {"room_id": rl3, "name": n, "machine": "adams-macbook", "folder": f, "job": f"Works on {n}.", "age_s": age})
+               for n, f, age in (("bugfix", "~/acme", 120), ("deployer", "~/acme", 60), ("writer", "~/docs", 30))}
+        home(L)
+        L.check(card(L, jl3["deployer"]["id"]).get_attribute("data-tries") == "2", "tries: bugfix and deployer aren't one card")
+        L.check(box(L, jl3["bugfix"]["id"]).count() == 0 and card(L, jl3["bugfix"]["id"]).count() == 0, "tries: the older try has its own card or tick box")
+        tick(L, jl3["deployer"]["id"]); tick(L, jl3["writer"]["id"])
+        L.audit("batch-tries"); part_shot(L, card(L, jl3["deployer"]["id"]), "31f-batch-tries")
+        go_btn(L, rl3).click(); approve_dialog(L, "Approve 2 chats")
+        bp = batch_posts(L)
+        L.check(len(bp) == 2 and sorted(i["id"] for i in bp[1][1]["items"]) == sorted([jl3["deployer"]["id"], jl3["writer"]["id"]]), f"tries: batch {bp[1:]}")
+        L.check(state(L, jl3["bugfix"]["id"]) == "pending", "tries: the older try went with the batch")
+        card(L, jl3["bugfix"]["id"]).get_by_role("button", name="Approve", exact=True).click(); approve_dialog(L)
+        L.check(state(L, jl3["bugfix"]["id"]) == "approved", "tries: single approval of the older try")
 
         # ── 12. the mock's contract ──
         H = run("Hal")

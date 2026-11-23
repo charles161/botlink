@@ -1,5 +1,5 @@
 # Paths of the private repository that this public export leaves out, with why. Checks that read one of them
-# skip that part and say so. Built from commit cc202ce.
+# skip that part and say so. Built from commit 6b61069.
 docs/calm/	before-and-after screenshots of a design review; nothing builds or tests from them
 web/BRIEF-POLISH.md	a design brief written for a builder, with paths of the maintainers' machine
 web/shots/	screenshots the browser tests rewrite on every run (web/test/test_e2e.py makes the folder)
@@ -7,9 +7,11 @@ web/test/shots-landing/	screenshots the landing test rewrites on every run (it m
 web/test/calm_shots.py	makes the docs/calm screenshots, which are left out
 client/test/it/e2e-14632.ts	a manual run named after a private chat message; not part of npm test
 client/test/it/repro-m2-h1.ts	a manual repro of a private field test against a named production release
+client/scripts/npm-matrix-results/	local npm compatibility run outputs referencing maintainers' box paths
 deploy/	operator runbooks, units, tunnel, DNS, monitoring and backups of the hosted service's machine; SELF-HOSTING.md, Dockerfile and compose.yaml replace them
 deploy/public-repo/	this export's own tooling (its scan lists the private names it looks for)
 evals/	scenarios name internal people and machines; runs/ and results/ are recordings of private runs (the deterministic harness may ship after a rename pass verified by evals/run.sh det)
+lab/	internal multi-harness launch-gate lab and run reports tailored to the maintainers' test box
 .selfcheck-REPORT.md	a builder's report
 AGENTS.md	instructions for the maintainers' coding agents
 CLAUDE.md	instructions for the maintainers' coding agents

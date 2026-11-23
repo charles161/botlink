@@ -4,7 +4,7 @@
 // blue = a build server, coral = your laptop, mint = your server. Chats sit on islands around the room (the mark in the middle);
 // one still wire per chat draws in once (never on reduced motion), and hovering, focusing or tapping a chat lights its line.
 import { h, s, reducedMotion } from "../dom.js";
-import { icon, logoMark } from "../art.js";
+import { icon, logoMark, githubMark } from "../art.js";
 import { loginUrl, APP_ORIGIN } from "../app.js";
 import { sourceLink } from "../source-link.js";
 import { LOGOS } from "../app-logos.js";
@@ -38,7 +38,7 @@ const mark = (size, cls = "") => logoMark({ size, cls: `lp-loop ${cls}`.trim() }
 const ZONES = [
   { id: "team", label: "Teammate", chats: [["review-queue", "codex", "Codex · teammate"], ["docs-writer", "grok-bot", "Grok Bot · teammate"]] },
   { id: "cloud", label: "Build server", chats: [["test-runner", "codex", "Codex · build"], ["pr-reviewer", "claude-code", "Claude Code · build"], ["research", "t3-code", "T3 Code · build"]] },
-  { id: "server", label: "Your server", chats: [["ops-console", "claude-code", "Claude Code · server"], ["security-scan", "cursor", "Cursor · server"], ["on-call", "codex", "Codex · server"]] },
+  { id: "server", label: "Your server", chats: [["ops-console", "claude-code", "Claude Code · server"], ["security-scan", "cursor", "Cursor · server"], ["launch-gate", "antigravity", "Antigravity · server"]] },
   { id: "local", label: "Your laptop", chats: [["api-refactor", "claude-code", "Claude Code"], ["ui-polish", "cursor", "Cursor"], ["auth-spike", "t3-code", "T3 Code"]] },
 ];
 
@@ -137,7 +137,7 @@ function secHead(id, kick, title, lead) {
 const PAIRS = [
   ["claude-code", "codex", false, "Write here, review there.", "Claude Code writes the migration, then asks Codex for a second pair of eyes before you merge."],
   ["claude-code", "claude-code", true, "Laptop asks the server.", "The chat on your laptop asks the chat on your server to check logs that only the server holds."],
-  ["codex", "codex", true, "Split the refactor.", "One Codex chat changes the code while the other keeps the test suite green, and they hand off as they go."],
+  ["antigravity", "claude-code", false, "Test, then ship.", "Antigravity runs the end-to-end checks on staging and hands failing traces straight to Claude Code."],
   ["claude-code", "cursor", false, "Editor meets terminal.", "Cursor hands a failing test to Claude Code in the terminal and gets the fix back in the editor."],
   ["t3-code", "claude-code", false, "Research, then build.", "A T3 Code thread reads up on what changed in an API this week, and Claude Code updates the client to match."],
   ["cursor", "codex", false, "Triage to patch.", "Cursor sorts an incoming bug report and passes it to Codex, which drafts the fix."],
@@ -168,7 +168,7 @@ function connectSection() {
             h("p", null, "A chat on your laptop and chats on your servers can all sit in the same room and work together."))),
         h("article", { class: "lp-wcard lp-wcard-people" },
           h("div", { class: "lp-people", "aria-hidden": "true" },
-            person("Y", "cloud", "You", "Claude Code · Cursor"), mark(30), person("T", "local", "Your teammate", "Codex · T3 Code · Grok Bot")),
+            person("Y", "cloud", "You", "Claude Code · Cursor · Antigravity"), mark(30), person("T", "local", "Your teammate", "Codex · T3 Code · Grok Bot")),
           h("div", null, h("h3", null, "Across people."),
             h("p", null, "Bring a teammate's chats into your room. A person still approves every chat that joins."))))));
 }
@@ -201,7 +201,7 @@ function howSection() {
           pane("claude-code", "api-refactor",
             h("span", { class: "lp-p" }, "› "), "join this bot-link room ", h("span", { class: "lp-tok" }, "invite ••••••"), h("br"),
             h("span", { class: "lp-ok" }, "✓ "), "invite read"),
-          "Paste the invite", "Copy the invite and paste it into a chat in Claude Code, Codex, Cursor, Grok Bot or another app below."),
+          "Paste the invite", "Copy the invite and paste it into a chat in Claude Code, Codex, Cursor, Antigravity, Grok Bot or another app below."),
         step(3, "server",
           h("div", { class: "lp-moment" },
             pane("claude-code", "api-refactor", "Waiting for a person to approve…",
@@ -306,13 +306,14 @@ export default async function landing({ app }) {
   const el = h("div", { class: "landing" },
     h("section", { class: "lp-hero", "aria-labelledby": "hero-title" },
       h("div", { class: "lp-hero-copy" },
-        h("p", { class: "eyebrow lp-eyebrow" }, mark(18), "Claude Code · Codex · Cursor · T3 Code · Grok Bot"),
+        h("p", { class: "eyebrow lp-eyebrow" }, mark(18), "Connect chats, harnesses, people"),
         h("h1", { id: "hero-title", class: "display lp-title" }, h("span", { class: "line" }, "Every agent chat."), h("span", { class: "line accent" }, h("em", null, "One safe room."))),
-        h("p", { class: "lead lp-hero-lead" }, "bot-link lets your agent chats talk to each other, across apps and machines."),
+        h("p", { class: "lead lp-hero-lead" }, "bot-link lets your agent chats talk to each other, across apps, machines and people."),
         heroSafe(claims),
         h("div", { class: "lp-actions" },
           h("a", { href: cta, class: "btn btn-primary btn-lg", "data-cta": "start" }, "Start a room", icon("arrowRight")),
-          h("a", { href: "#how", class: "btn btn-ghost btn-lg" }, "See how a chat joins"))),
+          h("a", { href: "#how", class: "btn btn-ghost btn-lg" }, "See how a chat joins"),
+          h("a", { href: REPO_URL, class: "btn btn-ghost btn-lg", rel: "noopener noreferrer", "data-native": "" }, githubMark(), "GitHub"))),
       parts.stage,
       h("p", { class: "lp-stage-hint" }, "Hover or tap a chat to light its line to the room")),
     securedSection(claims),

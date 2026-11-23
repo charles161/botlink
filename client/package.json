@@ -1,6 +1,6 @@
 {
   "name": "botlink",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "bot-link client: put your AI chats (Claude Code, Codex, Cursor) in a room. A person approves who comes in; messages are sealed end to end.",
   "type": "module",
   "license": "Apache-2.0",
@@ -44,7 +44,10 @@
     "clean": "node -e \"import('node:fs').then(fs=>fs.rmSync('dist',{recursive:true,force:true}))\"",
     "prepack": "npm run clean && npm run build && node scripts/make-shrinkwrap.mjs",
     "postpack": "node scripts/make-shrinkwrap.mjs --remove",
-    "pack:npm": "node scripts/pack-npm.mjs"
+    "pack:npm": "node scripts/pack-npm.mjs",
+    "release:bump": "node scripts/release-version.mjs bump",
+    "release:record": "node scripts/release-version.mjs record",
+    "release:check": "node scripts/release-version.mjs check"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.1",

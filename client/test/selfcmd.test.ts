@@ -10,7 +10,7 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { cpSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { FakeServer } from "./fake-server.js";
@@ -63,16 +63,45 @@ test("an https spec on bot-link's host: the same `npx -y <url>`", () => {
   const home = newHome("sc-https");
   const { root } = npxCopy(home, PROD);
   const r = ask(root, home, {});
-  assert.equal(r.selfCmd, `npx -y ${PROD}`);
+  assert.equal(r.selfCmd, `npx -y --allow-remote=all ${PROD}`);
   assert.equal(r.clientUrl, PROD);
   assert.equal(r.updateOrigin, "https://api.botlink.dev");
+});
+
+// Incident 21 Nov 2026: npx keys its cache on the spec string and never fetches a URL spec again, so `npx -y
+// <origin>/dl/botlink.tgz` on a computer that ran it before runs whatever it fetched first. Once the server has named
+// the versioned download of THIS version (every release has its own), the next-step lines name that URL: the same
+// release, under a spec no cache holds for another one.
+test("from the unversioned /dl/botlink.tgz, once the server named this very version's versioned URL: that URL; another version, another origin or no record: the spec as it is", () => {
+  const home = newHome("sc-versioned");
+  const { root } = npxCopy(home, PROD);
+  const v = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf-8")).version;
+  const at = "https://api.botlink.dev/dl/botlink-0123456789abcdef.tgz";
+  const rec = (sc: object) => {
+    mkdirSync(join(home, ".botlink", "client"), { recursive: true });
+    writeFileSync(join(home, ".botlink", "client", "update.json"), JSON.stringify({ server_client: sc }));
+  };
+  assert.equal(ask(root, home, {}).selfCmd, `npx -y --allow-remote=all ${PROD}`, "nothing named yet");
+  rec({ origin: "https://api.botlink.dev", version: v, url: at, release: 5 });
+  assert.equal(ask(root, home, {}).selfCmd, `npx -y --allow-remote=all ${at}`);
+  rec({ origin: "https://api.botlink.dev", version: "99.0.0", url: at, release: 9 });
+  assert.equal(ask(root, home, {}).selfCmd, `npx -y --allow-remote=all ${PROD}`, "another release's URL never names this copy");
+  rec({ origin: "https://test.botlink.dev", version: v, url: "https://test.botlink.dev/dl/botlink-0123456789abcdef.tgz", release: 5 });
+  assert.equal(ask(root, home, {}).selfCmd, `npx -y --allow-remote=all ${PROD}`, "another server's download never names this copy");
+  // a copy run from a versioned URL already names its own release
+  const h2 = newHome("sc-versioned2");
+  const own = "https://api.botlink.dev/dl/botlink-fedcba9876543210.tgz";
+  const c2 = npxCopy(h2, own);
+  mkdirSync(join(h2, ".botlink", "client"), { recursive: true });
+  writeFileSync(join(h2, ".botlink", "client", "update.json"), JSON.stringify({ server_client: { origin: "https://api.botlink.dev", version: v, url: at } }));
+  assert.equal(ask(c2.root, h2, {}).selfCmd, `npx -y --allow-remote=all ${own}`);
 });
 
 test("an https spec on the BOTLINK_SERVER host (staging): that address, never production", () => {
   const home = newHome("sc-staging-url");
   const { root } = npxCopy(home, "https://test.botlink.dev/dl/botlink.tgz");
   const r = ask(root, home, { BOTLINK_SERVER: "https://test.botlink.dev" });
-  assert.equal(r.selfCmd, "npx -y https://test.botlink.dev/dl/botlink.tgz");
+  assert.equal(r.selfCmd, "npx -y --allow-remote=all https://test.botlink.dev/dl/botlink.tgz");
   assert.equal(r.updateOrigin, "https://test.botlink.dev");
 });
 

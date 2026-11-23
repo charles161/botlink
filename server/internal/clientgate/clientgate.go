@@ -2,11 +2,12 @@
 // minimum (BOTLINK_MIN_CLIENT_RELEASE, a release number; empty or 0 = off, the default). SPEC §7.6 "Minimum client
 // release".
 //
-// Why a release number and not the version: every build says the same version (1.0.0), so a version cannot tell an old client
-// from a new one. Signed releases carry a number that only goes up (`counter` in the signed manifest,
+// Why a release number and not the version: until 1.0.1 every build said the same version (1.0.0), so a version could
+// not tell an old client from a new one (from 1.0.1 on every client release has its own version, which the join gate
+// compares: joingate.go). Signed releases carry a number that only goes up (`counter` in the signed manifest,
 // deploy/release-sign.mjs), and an installed client keeps the number of the release it runs (`.counter` in its
 // install folder, client/src/update.ts). The client sends it in X-Botlink-Client-Release, and its version string in
-// X-Botlink-Client-Version (for logs only; never compared).
+// X-Botlink-Client-Version (not compared here; joingate.go compares it).
 //
 // A client with no release number (one from before the header, a checkout, a global npm install, an npx copy before
 // its first signed update) sends no X-Botlink-Client-Release. On a dev server (BOTLINK_ENV=dev) it passes, so a

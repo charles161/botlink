@@ -8,6 +8,8 @@
 //	lease_after_query    called after an empty check, before the poll waits on its bell
 //	admit_before_append  called in appapi.admitChat just before the member_add is appended (a join approval, a batch
 //	                     item, a room draft's confirm)
+//	draft_after_create   called in agentapi.postRoomDraft after the create transaction commits (a new draft or the
+//	                     replay of one), before the answer is written
 package faults
 
 import (

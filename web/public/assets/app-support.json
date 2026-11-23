@@ -1,6 +1,6 @@
 {
  "about": "Apps the landing page shows, and what we have actually run. tested = a real run of the app with a real model, with the date of the last one and the OS; setup = bot-link sets itself up in that app, not yet run by us. An app with no evidence is not listed. web/scripts/copy-check.mjs checks this file: a tested row needs last_run, os, turn (how a chat in that app gets its turn, as the runs showed) and evidence; every tested app must be named in the landing's meta description, docs/agents.md and docs/llms.txt. Update a row when a run is recorded.",
- "as_of": "2026-11-18",
+ "as_of": "2026-11-22",
  "apps": [
   {
    "key": "claude-code",
@@ -61,6 +61,16 @@
    "how": "Grok Bot's agent with its own model, its commands running on a Linux computer, on a development build: it read the invite, joined by itself, showed the code and was approved; its wait signalled the wake test. bot-link named its app Cursor (its commands carry Cursor's marks). On 17 Nov 2026 the person who runs it confirmed that a wait held in its own turn works there (one command may run about 13 minutes), and that a routine set up in the Grok Bot app starts a new turn in a chat when its address is called. The routine line (founder's call, 18 Nov 2026): bot-link calling an address a person approved when a message waits, with no message text, was run on staging on 17 Nov 2026 with a plain address; the two together, a real Grok Bot routine started by bot-link's call, had not been run when the line was added",
    "turn": "Answers while it holds a wait in its own turn; a wait it runs in the background gives it no new turn. Wakes through a routine you set up in the Grok Bot app; bot-link calls the address you approve when a message waits (no message text sent).",
    "evidence": "evals/scenarios/wake/grok-background-gives-no-turn.yaml evals/FINDINGS.md docs/protocol/event-url-approval.md"
+  },
+  {
+   "key": "antigravity",
+   "name": "Antigravity",
+   "state": "tested",
+   "last_run": "2026-11-22",
+   "os": "Linux",
+   "how": "Antigravity CLI (agy) with gemini-4-neon-high on Linux, in rooms with Claude Code and Cursor through lab/botlink-lab.mjs: auto-detected as Antigravity, 6-character code verified, sealed round-trip and idle wake measured",
+   "turn": "Answers while idle through a listener that resumes its CLI session; interactive background waits not yet verified.",
+   "evidence": "lab/LAUNCH-GATE-REPORT.md docs/agents.md"
   },
   {
    "key": "opencode",

@@ -42,7 +42,7 @@ type Config struct {
 	// ClientTGZ: the client tarball served at GET /dl/botlink.tgz on the API host (BOTLINK_CLIENT_TGZ, or
 	// BOTLINK_DL_DIR/botlink.tgz). Empty: no /dl route. Read per request, so a `current` symlink follows deploys.
 	ClientTGZ string
-	// ClientURL: what people and agents run, `npx -y <ClientURL> …` (BOTLINK_CLIENT_URL; default
+	// ClientURL: what people and agents run, `npx -y --allow-remote=all <ClientURL> …` (BOTLINK_CLIENT_URL; default
 	// https://<API host>/dl/botlink.tgz, single-host: <app origin>/dl/botlink.tgz). Never the bare npm name.
 	ClientURL   string
 	DocsDir     string
@@ -89,6 +89,11 @@ type Config struct {
 	// from a client installed from an older release get 426 client_too_old (package clientgate; outside dev, also a
 	// client that sends no release number). /dl and /readyz are never behind it.
 	MinClientRelease string
+	// MinJoinClientVersion (BOTLINK_MIN_JOIN_CLIENT_VERSION, a client version like 1.0.1; empty = off, the default):
+	// a join, a room started by a chat and a member moved to a chat from a client below it get 409 client_outdated with
+	// the exact command that runs the current client (package clientgate, joingate.go); outside dev, also a client that
+	// sends no version. Reading and sending are never refused for it.
+	MinJoinClientVersion string
 	// PasskeyReset (BOTLINK_PASSKEY_RESET, on | off, default on): off means no reset can be started or finished (a
 	// waiting one can still be cancelled). PasskeyResetDeleteHold (BOTLINK_PASSKEY_RESET_DELETE_HOLD, default 168h):
 	// account delete is refused while a reset is open and for this long after one finished.
@@ -161,6 +166,7 @@ func FromEnv() (*Config, error) {
 		PostHogHost:            strings.TrimSpace(os.Getenv("BOTLINK_POSTHOG_HOST")),
 		AnalyticsHashKey:       os.Getenv("BOTLINK_ANALYTICS_HASH_KEY"),
 		MinClientRelease:       strings.TrimSpace(os.Getenv("BOTLINK_MIN_CLIENT_RELEASE")),
+		MinJoinClientVersion:   strings.TrimSpace(os.Getenv("BOTLINK_MIN_JOIN_CLIENT_VERSION")),
 		SourceURL:              os.Getenv("BOTLINK_SOURCE_URL"),
 	}
 	defHC := "real"

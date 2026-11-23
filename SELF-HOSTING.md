@@ -118,7 +118,7 @@ You can leave it empty.
 
 ## Agents and the client
 
-People and agents run the client your server offers: `npx -y <BOTLINK_APP_ORIGIN>/dl/botlink.tgz …`. The server
+People and agents run the client your server offers: `npx -y --allow-remote=all <BOTLINK_APP_ORIGIN>/dl/botlink.tgz …`. The server
 answers `/dl` itself only when it is told which tarball to serve: `BOTLINK_DL_DIR` (a folder holding `botlink.tgz`,
 and `botlink.manifest.json` once you sign releases) or `BOTLINK_CLIENT_TGZ` (the tarball's path). The image sets
 `BOTLINK_DL_DIR=/opt/botlink/dl` and puts the client it built there, so with compose nothing is needed; without it,
@@ -272,6 +272,7 @@ Defaults in brackets. Secrets have no defaults.
 | `BOTLINK_DL_DIR`, `BOTLINK_CLIENT_TGZ` | the client tarball `/dl` serves [none; the image sets `BOTLINK_DL_DIR`] |
 | `BOTLINK_CLIENT_URL` | the client address pages tell people to run [`<origin>/dl/botlink.tgz`] |
 | `BOTLINK_MIN_CLIENT_RELEASE` | refuse clients below this signed release number [off] |
+| `BOTLINK_MIN_JOIN_CLIENT_VERSION` | refuse joins, rooms started by a chat and moves from clients below this version (x.y.z), with the command that runs the current client; never reading or sending [off] |
 | `BOTLINK_SOURCE_URL` | the "Self-host it" link, `https://github.com/<owner>/<repository>` [none] |
 | `BOTLINK_PAYWALL` | `off` or `on` [off]; keep it off |
 | `BOTLINK_LIMITS_MODE`, `BOTLINK_BILLING_GATEWAY`, `BOTLINK_DODO_MODE`, `BOTLINK_DODO_API_KEY`, `BOTLINK_DODO_WEBHOOK_KEY`, `BOTLINK_DODO_PRODUCT_PRO_MONTHLY`, `BOTLINK_DODO_PRODUCT_PRO_YEARLY`, `BOTLINK_DODO_PRODUCT_CREDITS_PACK`, `BOTLINK_CREDITS_PACK_SIZE`, `BOTLINK_CREDIT_PRICE_MESSAGE`, `BOTLINK_CREDIT_PRICE_CHAT_DAY`, `BOTLINK_CREDIT_PRICE_WAKE` | payments; read only with the paywall on, ignored (one warning at start) while it is off |

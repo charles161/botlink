@@ -96,7 +96,7 @@ test("only one set, or none: neither header is sent, and a half setting is said 
   const { h } = await joined("cfhalf");
   assert.deepEqual(await on(h, () => accessHeaders(f.url), { BOTLINK_CF_ACCESS_CLIENT_ID: undefined, BOTLINK_CF_ACCESS_CLIENT_SECRET: undefined }), {});
   f.access.length = 0;
-  const r = await cli(["inbox", "--as", "cc", "--session", "aaaaaaaa-cfac-4bbb-8ccc-000000000001"], { ...process.env, HOME: h, BOTLINK_HOME: join(h, ".botlink"), BOTLINK_SERVER: f.url, BOTLINK_CF_ACCESS_CLIENT_ID: ID });
+  const r = await cli(["inbox", "--as", "cc", "--session", "aaaaaaaa-cfac-4bbb-8ccc-000000000001"], { ...process.env, HOME: h, BOTLINK_HOME: join(h, ".botlink"), BOTLINK_SERVER: f.url, BOTLINK_APP: "claude-code", BOTLINK_CF_ACCESS_CLIENT_ID: ID });
   const api = f.access.filter((x) => x.path.startsWith("/api/v1/"));
   assert.ok(api.length >= 1, `${JSON.stringify(api)} ${r.stdout} ${r.stderr}`);
   for (const x of api) assert.deepEqual([x.id, x.secret], [undefined, undefined]);
@@ -122,7 +122,7 @@ test("never to another host, and never through a redirect", async () => {
 
 test("the values are never written: status, a failing request and an update check leave them in no output and no file", async () => {
   const { h, m } = await joined("cfleak");
-  const env = { ...process.env, HOME: h, BOTLINK_HOME: join(h, ".botlink"), BOTLINK_SERVER: f.url, ...BOTH };
+  const env = { ...process.env, HOME: h, BOTLINK_HOME: join(h, ".botlink"), BOTLINK_SERVER: f.url, BOTLINK_APP: "claude-code", ...BOTH };
   const outs: string[] = [];
   const run = async (args: string[]) => {
     const r = await cli(args, env);

@@ -210,7 +210,8 @@ def apps_checks(pg, tag, fails):
             if app["name"] not in d["meta"]: fails.append(f"{tag} meta description does not name {app['name']}: {d['meta']!r}")
             if row["turn"] != app.get("turn"): fails.append(f"{tag} {app['name']}: turn line {row['turn']!r}, want {app.get('turn')!r}")
     if "Grok Bot" not in by_name: fails.append(f"{tag} Grok Bot is not in the support table")
-    if "Grok Bot" not in d["eyebrow"]: fails.append(f"{tag} hero eyebrow does not name Grok Bot: {d['eyebrow']!r}")
+    # Charles, Slack 21 Nov 2026: the hero eyebrow reads "Connect chats, harnesses, people"
+    if d["eyebrow"] != "Connect chats, harnesses, people": fails.append(f"{tag} hero eyebrow is not the agreed copy: {d['eyebrow']!r}")
     grok = [c for c in d["hero"] if c["sub"].startswith("Grok Bot")]
     if not grok: fails.append(f"{tag} no Grok Bot chat visible in the hero map")
     for c in grok:

@@ -21,7 +21,7 @@ if (stale) {
 }
 const base = mkdtempSync(join(process.env.BOTLINK_TEST_TMP || tmpdir(), "botlink-client-test-"));
 const env = { ...process.env };
-for (const k of Object.keys(env)) if (/^(CLAUDE|CODEX|BOTLINK_|CURSOR)/.test(k) && k !== "BOTLINK_TEST_TMP" && k !== "BOTLINK_TEST_PORT_BASE" && k !== "BOTLINK_IT_SERVER" && k !== "BOTLINK_IT_PORT" && k !== "BOTLINK_IT_PG" && k !== "BOTLINK_IT_DB") delete env[k];
+for (const k of Object.keys(env)) if (/^(CLAUDE|CODEX|BOTLINK_|CURSOR|ANTIGRAVITY)/.test(k) && k !== "BOTLINK_TEST_TMP" && k !== "BOTLINK_TEST_PORT_BASE" && k !== "BOTLINK_IT_SERVER" && k !== "BOTLINK_IT_PORT" && k !== "BOTLINK_IT_PG" && k !== "BOTLINK_IT_DB") delete env[k];
 Object.assign(env, {
   HOME: join(base, "home"),
   XDG_CONFIG_HOME: join(base, "xdg-config"),

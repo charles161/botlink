@@ -1,11 +1,9 @@
-import { h, s, toast } from "../dom.js";
+import { h, toast } from "../dom.js";
 import { get, post, errorText } from "../api.js";
-import { icon, avatar } from "../art.js";
+import { icon, avatar, githubMark } from "../art.js";
 import { navigate, afterSignIn, markSignedIn } from "../app.js";
 
 const safeReturn = (r) => (r && /^\/(?![\/\\])[^\s\\]*$/.test(r) && !r.startsWith("/login") ? r : "/rooms");
-
-const GH = "M12 2.5a9.5 9.5 0 0 0-3 18.5c.5.1.7-.2.7-.5v-1.7c-2.7.6-3.3-1.2-3.3-1.2-.4-1.1-1.1-1.4-1.1-1.4-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.5 2.3 1.1 2.9.8.1-.6.3-1.1.6-1.3-2.1-.2-4.4-1.1-4.4-4.7 0-1 .4-1.9 1-2.6-.1-.2-.4-1.2.1-2.5 0 0 .8-.3 2.6 1a9 9 0 0 1 4.8 0c1.8-1.3 2.6-1 2.6-1 .5 1.3.2 2.3.1 2.5.6.7 1 1.6 1 2.6 0 3.7-2.3 4.5-4.4 4.7.3.3.7.9.7 1.8v2.7c0 .3.2.6.7.5A9.5 9.5 0 0 0 12 2.5z";
 
 export default async function login({ app, query }) {
   const returnTo = safeReturn(query.get("return_to"));
@@ -19,7 +17,7 @@ export default async function login({ app, query }) {
   const startUrl = (p) => `/app/v1/auth/${p}/start?return_to=${encodeURIComponent(returnTo)}`;
   const buttons = [];
   if (providers.includes("github")) buttons.push(h("a", { href: startUrl("github"), class: "btn btn-provider", "data-native": "" },
-    s("svg", { class: "icon brand", width: 20, height: 20, viewBox: "0 0 24 24", "aria-hidden": "true" }, s("path", { d: GH })), "Continue with GitHub"));
+    githubMark(), "Continue with GitHub"));
   if (providers.includes("google")) buttons.push(h("a", { href: startUrl("google"), class: "btn btn-provider", "data-native": "" },
     h("span", { class: "g-mark", "aria-hidden": "true" }, "G"), "Continue with Google"));
   // The provider round trip lands back with a session; remember to ask for it on open pages too.

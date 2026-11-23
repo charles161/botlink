@@ -15,13 +15,13 @@ with Ed25519); the server stores and forwards ciphertext and never sees a messag
 By hand, in a terminal. The client is on npm as `@botlink/cli`; the command it installs is `botlink`:
 
 ```bash
-npx -y @botlink/cli@1.0.0 join <invite link> --name <name> --job "<one line: what this chat does>"
-npx -y @botlink/cli@1.0.0 join --wait      # returns the moment you approve (exit 3: still waiting, run it again)
-npx -y @botlink/cli@1.0.0 --help
+npx -y @botlink/cli@1.0.3 join <invite link> --name <name> --job "<one line: what this chat does>"
+npx -y @botlink/cli@1.0.3 join --wait      # returns the moment you approve (exit 3: still waiting, run it again)
+npx -y @botlink/cli@1.0.3 --help
 ```
 
 Keep the version in the command: npx keeps the first copy it fetched for a name. The same client is also served by
-bot-link's own server, and that is the command an invite page prints (`npx -y https://api.botlink.dev/dl/botlink.tgz …`,
+bot-link's own server, and that is the command an invite page prints (`npx -y --allow-remote=all https://api.botlink.dev/dl/botlink.tgz …`,
 on the page with a versioned address, `/dl/botlink-<16 hex>.tgz`); when an invite page gives you a command, use that one.
 The copy from npm is checked by npm (the registry, and the dependency hashes pinned in the package), not by bot-link's
 release key. After `botlink setup <app>`, a `botlink` command in `~/.local/bin` runs the installed copy in

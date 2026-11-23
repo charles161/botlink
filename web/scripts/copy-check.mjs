@@ -7,7 +7,7 @@
 // It reads every page and script under web/public, the docs the server serves (docs/agents.md, docs/llms.txt,
 // crypto/ENVELOPE.md as /envelope.md, api/openapi.yaml), client/README.md (it ships inside the client), a root
 // README.md if there is one, SPEC.md (claims only), and the strings a chat or a person reads from the client
-// (client/src: mcp.ts, core.ts, cli.ts, joinend.ts, tooold.ts, updatenote.ts, limits.ts, memberend.ts, hookmiss.ts). It fails on:
+// (client/src: mcp.ts, core.ts, cli.ts, joinend.ts, tooold.ts, stale.ts, updatenote.ts, limits.ts, memberend.ts, hookmiss.ts). It fails on:
 //   - claims nothing backs: "open source", a licence (while the repository is private), "guarantee", "every time",
 //     "no exceptions", "SOC 2", "compliance", "tamper-proof", "complete record", "independent", "the safest"…
 //   - sentences that were false on the live pages ("cannot add a chat", "public repository"…)
@@ -362,7 +362,7 @@ function sources(root) {
   for (const f of Object.keys(PAID_WORDING)) add(f, "html", { claims: true, cannot: true, words: true, names: true });
   // what a chat or a person reads from the client: tool descriptions, tool output and command-line text (string
   // literals; comments are not read). The same rules as the pages, except bracketed blanks (a usage line's "[--x]").
-  for (const f of ["mcp.ts", "core.ts", "cli.ts", "joinend.ts", "tooold.ts", "updatenote.ts", "limits.ts", "memberend.ts", "hookmiss.ts"]) add(`client/src/${f}`, "js", { claims: true, cannot: true, blanks: false, words: true, names: true, paid: true });
+  for (const f of ["mcp.ts", "core.ts", "cli.ts", "joinend.ts", "tooold.ts", "stale.ts", "updatenote.ts", "limits.ts", "memberend.ts", "hookmiss.ts"]) add(`client/src/${f}`, "js", { claims: true, cannot: true, blanks: false, words: true, names: true, paid: true });
   // specs: their terms of art (envelope, epoch, lease) are the protocol's names, so only claims and names (and the
   // served wire format no paid words)
   add("crypto/ENVELOPE.md", "md", { claims: true, names: true, paid: true });

@@ -4,12 +4,12 @@
   "paywall": false,
   "client": {
    "name": "botlink",
-   "version": "1.0.0",
+   "version": "1.0.3",
    "node": ">=20",
    "dependencies": 5,
    "src": [
     "client/package.json",
-    "SPEC.md",
+    "client/release-fingerprint.json",
     "deploy/lib/build.sh",
     "client/src/update.ts"
    ]
@@ -29,11 +29,13 @@
     "botlink.dev"
    ],
    "every_h": 6,
+   "behind_min": 30,
    "off": "BOTLINK_NO_UPDATE",
    "download": "https://api.botlink.dev/dl/botlink.tgz",
    "src": [
     "client/src/release.ts",
     "client/src/update.ts",
+    "client/src/stale.ts",
     "client/src/hosts.ts",
     "deploy/release-sign.mjs",
     "SPEC.md",

@@ -50,6 +50,11 @@ export function icon(name, { size = 20, cls = "", label } = {}) {
   }, s("path", { d }));
 }
 
+// The GitHub mark (monochrome, the text colour: light and dark alike), for the sign-in button and the header's GitHub link.
+const GITHUB = "M12 2.5a9.5 9.5 0 0 0-3 18.5c.5.1.7-.2.7-.5v-1.7c-2.7.6-3.3-1.2-3.3-1.2-.4-1.1-1.1-1.4-1.1-1.4-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.5 2.3 1.1 2.9.8.1-.6.3-1.1.6-1.3-2.1-.2-4.4-1.1-4.4-4.7 0-1 .4-1.9 1-2.6-.1-.2-.4-1.2.1-2.5 0 0 .8-.3 2.6 1a9 9 0 0 1 4.8 0c1.8-1.3 2.6-1 2.6-1 .5 1.3.2 2.3.1 2.5.6.7 1 1.6 1 2.6 0 3.7-2.3 4.5-4.4 4.7.3.3.7.9.7 1.8v2.7c0 .3.2.6.7.5A9.5 9.5 0 0 0 12 2.5z";
+export const githubMark = ({ size = 20 } = {}) =>
+  s("svg", { class: "icon brand", width: size, height: size, viewBox: "0 0 24 24", "aria-hidden": "true", focusable: "false" }, s("path", { d: GITHUB }));
+
 export const APP_NAMES = { "claude-code": "Claude Code", codex: "Codex", cursor: "Cursor", opencode: "OpenCode", other: "Other app" };
 /** The server's measured label (SPEC §6.9) in people's words. Same meaning, no turn/wake jargon. */
 const TURN_TEXT = { "wakes on its own": "Ready anytime", "always on": "Always on", "answers on its next turn": "Replies when next used", "listener down": "Listener down" };

@@ -209,10 +209,28 @@ const realOf = (p: string) => {
   }
 };
 const strip = (p: string) => (p.length > 1 ? p.replace(/[\\/]+$/, "") : p);
-function sameOrUnder(dir: string, root: string, under: boolean): boolean {
-  const d = strip(realOf(dir)), r = strip(realOf(root));
-  if (d === r || strip(dir) === strip(root)) return true;
+/** Is dir the folder root (under: or below it)? Symlinks resolved; macOS and Windows folders compare without case (their
+ *  file systems do: a chat's folder may come back as ~/documents/… from one call and ~/Documents/… from another). */
+export function sameOrUnder(dir: string, root: string, under: boolean, platform: string = process.platform): boolean {
+  const fold = platform === "darwin" || platform === "win32" ? (x: string) => x.toLowerCase() : (x: string) => x;
+  const d = fold(strip(realOf(dir))), r = fold(strip(realOf(root)));
+  if (d === r || fold(strip(dir)) === fold(strip(root))) return true;
   return under && (d.startsWith(r + "/") || d.startsWith(r + "\\"));
+}
+
+/** The app a chat or record is as the room sees it: its local app, and for an app bot-link knows by name only, that
+ *  name (OpenCode detected from its env and an undetected chat that names itself "OpenCode" are one app: founder bug
+ *  21 Nov 2026, where one chat's two calls disagreed and its own request was "taken"). Same local app: same app.
+ *  Undetected ("other") without a name matches any of those names; two different names are two apps. A T3 thread is
+ *  its session, never matched this way. */
+export function sameAppAs(x: { app: st.App; app_name?: string | null }, me: { app?: st.App | null; app_name?: string | null }): boolean {
+  if (!me.app) return false;
+  if (x.app === me.app) return true;
+  if (x.app === "t3" || me.app === "t3" || st.wireApp(x.app) !== "other" || st.wireApp(me.app) !== "other") return false;
+  const label = (app: st.App, name?: string | null) => st.cleanAppName(name) ?? st.KNOWN_APP_NAME[app] ?? null;
+  const norm = (v: string) => v.toLowerCase().replace(/[\s-]+/g, "");
+  const a = label(x.app, x.app_name), b = label(me.app, me.app_name);
+  return !a || !b || norm(a) === norm(b);
 }
 /** The calling app whose members it may act as (null: no filter, internal callers that pass no app). An undetected
  *  caller ("other") acts only as "other" members, never as a Claude Code / Codex / Cursor / OpenCode one. */
@@ -236,10 +254,15 @@ const SINGLE: ReadonlySet<st.App> = new Set<st.App>(["opencode", "other"]);
 export function heldBy(session: string | null, w: Who = {}): st.MemberRec[] {
   const app = appFilter(w);
   const every = st.liveMembers(); // a member the server ended is never acted as (memberend.ts)
-  const all = every.filter((m) => !app || m.app === app);
+  // a chat found by its folder (OpenCode, undetected) is that app as the room sees it (sameAppAs)
+  const all = every.filter((m) => !app || m.app === app || (SINGLE.has(app) && SINGLE.has(m.app) && sameAppAs(m, { app })));
+  let held: st.MemberRec[] = [];
   if (session) {
-    const held = all.filter((m) => m.holder_session === session);
-    if (held.length) return held;
+    held = all.filter((m) => m.holder_session === session);
+    // a chat found by its folder that also passes its session (the founder's OpenCode chat: --session on later calls)
+    // holds what its session holds AND what it joined from its folder: never only the first (that answered a status
+    // for #neon with its member of #test1)
+    if (held.length && !(app && SINGLE.has(app))) return held;
   }
   // H2 (a field test T11): a Cursor member is the Cursor chat that joined (its conversation id: CURSOR_CONVERSATION_ID
   // in the chat's shell, conversation_id in its hooks, or the `session` the chat passes), never every Cursor chat in
@@ -256,18 +279,32 @@ export function heldBy(session: string | null, w: Who = {}): st.MemberRec[] {
   const folders = w.folders?.length ? w.folders : [process.cwd()];
   const roots = w.roots || [];
   const inFolder = (m: st.MemberRec) => folders.some((f) => sameOrUnder(m.cwd, f, false)) || roots.some((r) => sameOrUnder(m.cwd, r, true));
-  const free = all.filter((m) => m.app !== "cursor" && (m.holder_session === null || m.app === "opencode"));
+  const free = all.filter((m) => m.app !== "cursor" && (m.holder_session === null || m.app === "opencode") && !held.some((h) => h.id === m.id));
   const here = free.filter(inFolder);
+  const withHeld = (ms: st.MemberRec[]) => [...held, ...ms];
   // a chat with no session id and no hooks (OpenCode, an app bot-link doesn't know) is found by folder alone: only a
-  // single match counts (several: the chat says which with `as`), so one chat never reads another's messages
-  if (here.length > 1 && app && SINGLE.has(app)) return byListener(here);
-  if (here.length) return here;
+  // single match per room counts (several in one room: the chat says which with `as`), so one chat never reads
+  // another's messages; one member in each of several rooms is one chat in several rooms
+  if (app && SINGLE.has(app)) {
+    const perRoom = onePerRoom(here);
+    if (perRoom.length || !here.length) {
+      if (perRoom.length) return withHeld(perRoom);
+    } else return withHeld(byListener(here));
+  } else if (here.length) return withHeld(here);
   if (app && LEGACY_OTHER.has(app)) {
-    const legacy = every.filter((m) => m.app === "other" && m.holder_session === null && inFolder(m));
-    if (legacy.length === 1) return legacy; // single match only; several: the chat says which with `as`
-    if (legacy.length > 1) return byListener(legacy);
+    const legacy = every.filter((m) => m.app === "other" && m.holder_session === null && inFolder(m) && !held.some((h) => h.id === m.id));
+    const perRoom = onePerRoom(legacy);
+    if (perRoom.length) return withHeld(perRoom); // single match per room only; several: the chat says which with `as`
+    if (legacy.length) return withHeld(byListener(legacy));
   }
-  return here;
+  return withHeld(here);
+}
+
+/** Members of distinct rooms, or none when a room has more than one of them (then they can't be told apart). */
+function onePerRoom(ms: st.MemberRec[]): st.MemberRec[] {
+  const rooms = new Map<string, number>();
+  for (const m of ms) rooms.set(m.room.id, (rooms.get(m.room.id) || 0) + 1);
+  return [...rooms.values()].every((n) => n === 1) ? ms : [];
 }
 
 /** H2: what a Cursor chat is told when bot-link can't tell which Cursor chat is calling (no member names in it). */
@@ -318,7 +355,7 @@ const FOLDER_APPS: ReadonlySet<string> = new Set(["cursor", "opencode", "other"]
 export function mayActAs(m: st.MemberRec, session: string | null, app?: st.App | null): boolean {
   if (m.holder_session) return !!session && m.holder_session === session;
   if (app === undefined) return true;
-  return !!app && (m.app === app || (app === "opencode" && m.app === "other"));
+  return !!app && (m.app === app || (app === "opencode" && m.app === "other") || (app === "other" && m.app === "opencode"));
 }
 
 export function notThisChat(m: st.MemberRec, session: string | null, app: st.App | null = null): string {
@@ -374,7 +411,7 @@ export function severalRooms(name: string, ms: st.MemberRec[], word = "room"): s
   return `${name} is a member of several rooms (${[...new Set(shown)].join(", ")}). Say which one with ${word}.`;
 }
 
-const APP_NAMES: Record<string, string> = { "claude-code": "Claude Code", codex: "Codex", cursor: "Cursor", opencode: "OpenCode", t3: "T3 Code", other: "other-app" };
+const APP_NAMES: Record<string, string> = { "claude-code": "Claude Code", codex: "Codex", cursor: "Cursor", opencode: "OpenCode", t3: "T3 Code", antigravity: "Antigravity", other: "other-app" };
 
 /** The exact commands a chat can use when the bot-link tools aren't loaded in it yet (joined mid-session). */
 export function cliFallback(m: { name: string; room: { name: string } }, several = false): string {
@@ -403,6 +440,8 @@ export interface JoinArgs {
   wake?: { via: "t3" | "opencode"; id: string } | null;
   /** something that can wake this chat is set up already (see joinWait): used when an earlier approved request is finished */
   wakeReady?: boolean;
+  /** Cursor: the Cursor chat this request is made from (session.ts cursorChatOf); default its shell's id */
+  cursorChat?: string | null;
 }
 
 /**
@@ -544,7 +583,8 @@ export async function joinCreate(a: JoinArgs): Promise<{ req: st.RequestRec; tex
     : movedLabel(a.app, a.app_name, st.liveMembers().find((m) => m.server === server0(a.invite) && m.name === a.name && st.wireApp(m.app) !== "other" && !!m.app_name)?.app_name);
   const wire = claimed ? "other" : st.wireApp(a.app);
   const appName = claimed ?? (wire !== "other" ? null : st.KNOWN_APP_NAME[a.app] ?? st.cleanAppName(a.app_name));
-  if (wire === "other" && !appName && kind === "join") throw new UserError(askAppName(a.appNameWord));
+  // (an undetected chat that names no app is asked to, after its own earlier request for this room was looked for)
+  const mustName = wire === "other" && !appName && kind === "join";
   if (claimed) a = { ...a, turn: a.turn === "wake" ? "on_turn" : a.turn, wakeReady: false, wake: null };
   const server = serverFor(a.invite);
   const api = apiFor(server);
@@ -559,8 +599,9 @@ export async function joinCreate(a: JoinArgs): Promise<{ req: st.RequestRec; tex
   // sent, this chat's own earlier requests for this room are asked where they stand: an approved one is finished
   // here (the chat becomes exactly what the human approved), a waiting one under another name is said out loud
   // instead of being shadowed by a second request, a decided one is dropped.
+  const room0 = inviteRoom(a.invite);
   if (kind === "join") {
-    const me: ChatRef = { app: a.app, session: a.session, cwd: a.cwd };
+    const me: ChatRef = { app: a.app, app_name: appName, session: a.session, cwd: a.cwd };
     // …and the same chat under a session id that changed since it asked (same app, folder, invite and name)
     const code = inviteCode(a.invite);
     const moved = st.allRequests().filter((r) => r.kind === "join" && r.server === server && r.name === a.name && inviteCode(r.invite) === code && !ownRequest(r, me) && sameChatOtherSession(r, me));
@@ -593,9 +634,27 @@ export async function joinCreate(a: JoinArgs): Promise<{ req: st.RequestRec; tex
       if (r.name === a.name) {
         return { req: r, resumed: true, text: `This chat already asked to join with this invite as ${r.name}: this is the same request (nothing new was sent).\nWaiting for ${r.approver_name} to approve this chat. Approve in the browser: ${approveLink(r)}\nCode ${groupCode(r.match_code)} · key ${r.fingerprint}.${r.expires_at ? `\n${approveWithin(r.approver_name, r.expires_at)}` : ""}` };
       }
-      throw new UserError(`This chat already asked to join #${r.room?.name || inviteRoom(a.invite) || "this room"} as ${r.name}, and that request still waits for ${r.approver_name}. Approve in the browser: ${approveLink(r)} · code ${groupCode(r.match_code)}.\nOne chat joins a room once, under one name, so nothing new was sent for ${a.name}. Wait for that request (join with only wait: true; the command line: \`${selfCmd()} join --wait\`). To be ${a.name} instead, ${r.approver_name} rejects the request for ${r.name} on the dashboard (or it expires ${expiresIn(r.expires_at)}), then join again as ${a.name}.`);
+      throw new UserError(`This chat already asked to join #${r.room?.name || room0 || "this room"} as ${r.name}, and that request still waits for ${r.approver_name}. Approve in the browser: ${approveLink(r)} · code ${groupCode(r.match_code)}.\nDo not join again and do not pick another name: one chat joins a room once, under one name, so nothing new was sent for ${a.name}. Wait for that request (join with only wait: true; the command line: \`${selfCmd()} join --wait\`). To be ${a.name} instead, ${r.approver_name} rejects the request for ${r.name} on the dashboard (or it expires ${expiresIn(r.expires_at)}), then join again as ${a.name}.`);
+    }
+    // one chat, one identity per room (founder bug 21 Nov 2026: approved as opencode, the chat asked again as
+    // opencode-2, opencode-mj and sec-research): a member this chat already is in the invite's room is the answer,
+    // whatever name it asks for now. Another room's member (sec-research in #test1) is never used for this room.
+    for (const m of room0 ? st.liveMembers().filter((x) => x.server === server && x.room.name === room0 && memberOfThisChat(x, me)) : []) {
+      // (a membership the server ended and this computer never heard of is not in the way: removed, then join again)
+      if (await stillMember(m, a.session)) throw new AlreadyJoined(alreadyMemberText(m.name, m.room.name));
+    }
+    // the same app's waiting request for this invite and name from another folder of this computer: never a second
+    // request, never "taken" (sameOrUnder: the folder is a sessionless chat's identity, so it is not taken over)
+    if (!a.session) {
+      for (const r of st.allRequests().filter((x) => x.kind === "join" && x.server === server && !x.session_id && x.name === a.name && inviteCode(x.invite) === code && sameAppAs(x, me) && !ownRequest(x, me))) {
+        const view = await peekRequest(r);
+        const localExpired = !!r.expires_at && Date.parse(r.expires_at) < Date.now();
+        if (view ? view.status !== "pending" : localExpired) continue;
+        throw new UserError(otherFolderText(r, a.cwd));
+      }
     }
   }
+  if (mustName) throw new UserError(askAppName(a.appNameWord));
   const keys = c.genKeys();
   const id = c.uuidv7();
   const stored = putSecrets(id, { ed25519_sk: keys.ed_sk, x25519_sk: keys.x_sk }, preferredBackend());
@@ -620,23 +679,44 @@ export async function joinCreate(a: JoinArgs): Promise<{ req: st.RequestRec; tex
     }
   } catch (e) {
     deleteSecrets(id, stored.backend);
+    if (e instanceof ApiError && (e.code === "join_pending" || e.code === "already_member")) {
+      // the server's one-identity guard (agentapi/join.go oneWaitingJoin): this computer, folder and app already have
+      // a waiting join or a member in this room, and this chat has no record of it here (another bot-link folder)
+      const n = plain(String(e.details?.name || ""), 24) || "another name";
+      const where = room0 ? `#${room0}` : "this room";
+      // nothing the server says makes this chat a member: that takes the request's key, and this bot-link folder has none
+      if (e.code === "already_member") throw new UserError(`A chat on this computer, in this folder and app, is already ${n} in ${where}, but this computer's bot-link folder (${st.p()}) doesn't hold the key for ${n}: it was joined with another bot-link folder or HOME. Do not join again and do not pick another name. Tell your human: if ${n} is this chat, run bot-link the way that join ran (the same HOME and bot-link folder); if that membership is lost, they remove ${n} on the room page, then this chat joins again.`);
+      throw new UserError(`A chat on this computer already asked to join ${where} from this folder as ${n}, and that request is waiting for approval, but this computer's bot-link folder (${st.p()}) doesn't hold the key for ${n}. Do not join again and do not pick another name. If that request is this chat's, wait for it with \`${selfCmd()} join --wait\` run the way that first join ran (the same HOME and bot-link folder). Otherwise tell your human: they approve or reject the request for ${n} on the dashboard, then this chat joins again.`);
+    }
     if (e instanceof ApiError && e.code === "name_taken") {
+      const room = room0;
+      const pending = e.details?.pending === true;
       // the name is taken by this very chat: it joined with this invite already (its request is finished)
-      const room = /\/i\/(.+)-[A-Za-z0-9]+\/?$/.exec(a.invite.trim())?.[1];
-      const me = st.liveMembers().find((m) => m.server === server && m.name === a.name && (!room || m.room.name === room) && (m.holder_session ? !!a.session && m.holder_session === a.session : m.app === a.app && sameOrUnder(m.cwd, a.cwd, false)));
+      const me = st.liveMembers().find((m) => m.server === server && m.name === a.name && (!room || m.room.name === room) && (m.holder_session ? !!a.session && m.holder_session === a.session : sameAppAs(m, { app: a.app, app_name: appName }) && sameOrUnder(m.cwd, a.cwd, false)));
       if (me) throw new AlreadyJoined(`This chat already joined #${me.room.name} as ${me.name} (approved); there is nothing left to do. \`${selfCmd()} status\` shows it.`);
       // the name is held from THIS computer by another chat session's request or member (a session id that changed:
       // /clear, a restart, a resumed chat). A new name would be a second identity the human never meant to approve.
       const held = [
-        ...st.allRequests().filter((r) => r.kind === "join" && r.server === server && r.name === a.name && (!room || r.room?.name === room)).map((r) => ({ what: `a request to join as ${a.name}`, app: r.app, cwd: r.cwd })),
-        ...st.liveMembers().filter((m) => m.server === server && m.name === a.name && (!room || m.room.name === room)).map((m) => ({ what: `the member ${a.name}`, app: m.app, cwd: m.cwd })),
-      ].filter((x) => x.app === a.app); // another app's chat is another chat: a new name is right for it
-      // the same folder (the rule of sameChatOtherSession): this chat before its session changed. Another folder: another
-      // chat of the same app that happens to want the same name: it needs its own (overseer's review of the fix)
+        ...st.allRequests().filter((r) => r.kind === "join" && r.server === server && r.name === a.name && (!room || r.room?.name === room)).map((r) => ({ what: `a request to join as ${a.name}`, app: r.app, app_name: r.app_name, cwd: r.cwd, folder: r.folder, req: r as st.RequestRec | null })),
+        ...st.liveMembers().filter((m) => m.server === server && m.name === a.name && (!room || m.room.name === room)).map((m) => ({ what: `the member ${a.name}`, app: m.app, app_name: m.app_name, cwd: m.cwd, folder: m.folder, req: null as st.RequestRec | null })),
+      ].filter((x) => sameAppAs(x, { app: a.app, app_name: appName })); // another app's chat is another chat: a new name is right for it
+      // the same folder (the rule of sameChatOtherSession): this chat before its session changed
       const here = held.find((x) => sameOrUnder(x.cwd, a.cwd, false));
-      if (!here && held.length) throw new UserError(`The name "${a.name}" in ${room ? `#${room}` : "that room"} is taken by another ${APP_NAMES[a.app] || a.app} chat on this computer (in another folder). This chat needs its own name: ask your human which name to use${e.details?.suggestion ? ` (for example "${e.details.suggestion}")` : ""}.`);
-      if (here) throw new UserError(`The name "${a.name}" in ${room ? `#${room}` : "that room"} is held from this computer: ${here.what}, made by another ${APP_NAMES[here.app] || here.app} chat session on this computer (or by this chat before its session changed). Don't pick another name: that would ask your human to approve a second chat. Tell your human. If this chat should be ${a.name}, they remove ${a.name} on the room page (or reject its request), then this chat joins again as ${a.name}.`);
+      if (here) throw new UserError(`The name "${a.name}" in ${room ? `#${room}` : "that room"} is held from this computer: ${here.what}, made by another ${APP_NAMES[here.app] || here.app} chat session on this computer (or by this chat before its session changed). Don't pick another name: that would ask your human to approve a second chat. Tell your human. If this chat should be ${a.name}, they ${here.req ? "approve or reject that request on the dashboard" : `remove ${a.name} on the room page`}, then this chat joins again as ${a.name}.`);
+      // another folder of this computer, the same app. A chat with a session id is that session: another session in
+      // another folder is another chat, and it needs its own name (overseer's review of the 16 Nov fix)
+      const there = held[0];
+      if (there && a.session) throw new UserError(`The name "${a.name}" in ${room ? `#${room}` : "that room"} is taken by another ${APP_NAMES[a.app] || a.app} chat on this computer (in another folder). This chat needs its own name: ask your human which name to use${e.details?.suggestion ? ` (for example "${e.details.suggestion}")` : ""}.`);
+      // a chat found by its folder: maybe this chat run from another folder, maybe another chat. Never "taken", never
+      // told to pick a name itself (founder bug 21 Nov 2026: it took "opencode-2" from that)
+      if (there?.req) throw new UserError(otherFolderText(there.req, a.cwd));
+      if (there) throw new UserError(`The name "${a.name}" in ${room ? `#${room}` : "that room"} belongs to a member that joined from this computer in another folder (${there.folder}). If that member is this chat, run bot-link from that folder. Don't pick another name yourself: tell your human, and they decide what this chat is called.`);
+      // another app's chat on this computer holds it (its request or member is here): another chat, which needs its own name
+      const otherApp = [...st.allRequests().filter((r) => r.kind === "join" && r.server === server && r.name === a.name && (!room || r.room?.name === room)), ...st.liveMembers().filter((m) => m.server === server && m.name === a.name && (!room || m.room.name === room))][0];
+      if (otherApp && pending) throw new UserError(`The name "${a.name}" in ${room ? `#${room}` : "that room"} belongs to another app's chat on this computer (${APP_NAMES[otherApp.app] || otherApp.app}), and its request is waiting for approval. This chat is another chat: ask your human which name to use${e.details?.suggestion ? ` (for example "${e.details.suggestion}")` : ""}.`);
+      if (pending && e.details?.same_machine === true) throw new UserError(`A request to join ${room ? `#${room}` : "this room"} as ${a.name}, asked from this computer, is waiting for approval, but this computer's bot-link folder (${st.p()}) doesn't hold the key for it (it was asked with another bot-link folder or HOME, or that record was lost). Nothing new was sent. Don't ask under another name: that would ask your human to approve a second chat. Tell your human: if that request is this chat's, they approve it on the dashboard and this chat finishes it with \`${selfCmd()} join --wait\` run the same way as the first join; otherwise they reject it, and this chat runs the same join again.`);
       const sug = e.details?.suggestion;
+      if (pending) throw new UserError(`A chat on another computer asked to join ${room ? `#${room}` : "that room"} as ${a.name}, and that request is waiting for approval. This chat needs its own name: ask your human which name to use${sug ? ` (for example "${sug}")` : ""}.`);
       throw new UserError(`The name "${a.name}" is already taken in that room.${sug ? ` Try "${sug}".` : ""} Ask your human which name to use.`);
     }
     throw e;
@@ -659,7 +739,7 @@ export async function joinCreate(a: JoinArgs): Promise<{ req: st.RequestRec; tex
     invite_account: inviteAccount, invite_name: plain(String(view.approver_name || ""), 80) || null, approver_account: inviteAccount,
     room: view.room, member_id: view.member_id ?? null, expires_at: view.expires_at, created_at: Date.now(), wake: a.wake ?? null,
     lifetime_s: serverAt && Number.isFinite(Date.parse(view.expires_at)) ? Math.round((Date.parse(view.expires_at) - serverAt) / 1000) : null,
-    cursor_chat: a.app === "cursor" ? cursorChatFromEnv() : null,
+    cursor_chat: a.app === "cursor" ? (a.cursorChat ?? cursorChatFromEnv()) : null,
   };
   const where = view.dashboard_url ? new URL(view.dashboard_url).host : DASH(server);
   const what = kind === "claim" ? `the move of ${a.name} to this computer` : "this chat";
@@ -956,21 +1036,59 @@ export type WaitOutcome = { status: "approved"; text: string; member: st.MemberR
  *  another app's on the same computer. */
 export interface ChatRef {
   app?: st.App | null;
+  /** the app's name when bot-link knows the app by name only (sameAppAs) */
+  app_name?: string | null;
   session?: string | null;
   cwd?: string | null;
 }
 
 /** Is this request this chat's? Same app; the same session when the request has one, else the same folder. */
-export function ownRequest(r: { app: st.App; session_id: string | null; cwd: string; cursor_chat?: string | null }, me: ChatRef): boolean {
+export function ownRequest(r: { app: st.App; app_name?: string | null; session_id: string | null; cwd: string; cursor_chat?: string | null }, me: ChatRef): boolean {
   if (me.app === undefined) return true; // internal callers (tests) that name no chat
   // a request made by a chat with a session belongs to that session only (the session IS the chat)
   if (r.session_id) return !!me.session && r.session_id === me.session;
-  // without one (Cursor, OpenCode, scripts): the same app in the same folder
-  if (r.app !== me.app) return false;
-  // H2: a Cursor request made from a chat's shell knows that chat; another Cursor chat never finishes it
-  const chat = me.app === "cursor" ? cursorChatFromEnv() : null;
+  // without one (Cursor, OpenCode, scripts): the same app (as the room sees it: sameAppAs) in the same folder
+  if (!sameAppAs(r, me)) return false;
+  // H2: a Cursor request made from a chat's shell knows that chat; another Cursor chat never finishes it (the chat's
+  // id: the one it passed, else its shell's; session.ts chatSession)
+  const chat = me.app === "cursor" ? me.session || cursorChatFromEnv() : null;
   if (r.cursor_chat && chat && r.cursor_chat !== chat) return false;
   return !me.cwd || sameOrUnder(r.cwd, me.cwd, false);
+}
+
+/** Is m this chat's member? Its session holds it; else (no holder: OpenCode, undetected, listening) the same app as
+ *  the room sees it in the same folder; a Cursor member only when its chat is known to be this one (H2). */
+function memberOfThisChat(m: st.MemberRec, me: ChatRef): boolean {
+  if (m.holder_session) return !!me.session && m.holder_session === me.session;
+  if (!sameAppAs(m, me) || !me.cwd || !sameOrUnder(m.cwd, me.cwd, false)) return false;
+  if (m.app !== "cursor") return true;
+  const chat = me.session ?? cursorChatFromEnv();
+  return !!chat && m.wake_chat === chat;
+}
+
+/** Is this member still one on the server? A final answer (removed, key unknown) ends it here; no answer: yes. */
+async function stillMember(m: st.MemberRec, session: string | null): Promise<boolean> {
+  try {
+    await apiFor(m.server).call({ method: "GET", path: "/api/v1/me", signer: signerOf(m), session: m.holder_session ?? session, retryForMs: 0, timeoutMs: 5000 });
+    return true;
+  } catch (e) {
+    if (isFinal(e)) {
+      endMember(m, e);
+      return false;
+    }
+    return true;
+  }
+}
+
+/** What a chat that is a member of the room already is told when it asks to join it again, under any name. */
+export function alreadyMemberText(name: string, room: string): string {
+  return `This chat already joined #${room} as ${name} (approved): you are ${name} in #${room}. Do not join again and do not pick another name. Use it: \`${selfCmd()} roster --room ${room}\`, \`${selfCmd()} send --room ${room} --to <member or room> --text "..."\` (add --as ${name} if a command can't tell which member this chat is).`;
+}
+
+/** The same app's waiting request for this name, asked from another folder on this computer. */
+function otherFolderText(r: st.RequestRec, cwd: string): string {
+  const rel = sameOrUnder(cwd, r.cwd, true) ? "a folder above this one" : sameOrUnder(r.cwd, cwd, true) ? "a folder below this one" : "another folder";
+  return `A request to join #${r.room?.name || "this room"} as ${r.name} is waiting for ${r.approver_name} to approve: it was asked from this computer by ${APP_NAMES[r.app] || r.app} in ${r.folder} (${rel}), not from this folder. Nothing new was sent. If this chat asked it (it ran join from that folder before), run the same join from that folder (cd to it first): that continues the same request. Don't pick another name: if this is another chat, tell your human, and they decide what it is called.`;
 }
 
 const doneDir = () => st.p("requests", "done");
@@ -1011,6 +1129,27 @@ function latestRequest(id: string | null | undefined, me: ChatRef): st.RequestRe
 }
 
 export class AlreadyJoined extends UserError {}
+
+/**
+ * A join this chat asked for that its person approved while nobody waited (founder bug 21 Nov 2026: the chat never ran
+ * join --wait, and `roster --room neon` then said "This chat isn't a bot-link member yet", so it asked again under new
+ * names). Every later call of this chat finishes it first, the way join --wait does (the same rule, ownRequest: this
+ * chat's session, or without one its app and folder), and says so. Finishing beats a note that says "run join --wait":
+ * a chat that misread the first text misreads a second one too, and finishing is exactly what the person approved.
+ * Only approved requests are touched; nothing is asked when this chat has no request on this computer.
+ */
+export async function settleApproved(me: ChatRef & { wakeReady?: boolean }): Promise<WaitOutcome[]> {
+  const out: WaitOutcome[] = [];
+  // one short look each (a command must not hang on it when the server can't be reached); a request that ran out
+  // here is left to join --wait, which says what became of it
+  for (const r of st.allRequests().filter((x) => x.kind === "join" && ownRequest(x, me) && !(x.expires_at && Date.parse(x.expires_at) < Date.now()))) {
+    const view = await waitCall(r, 0, { timeoutMs: 5_000, retryForMs: 0 }).catch(() => null);
+    if (view?.status !== "approved") continue;
+    const done = await finishApproval(r, view, me.wakeReady ?? true);
+    out.push(done.status === "approved" ? { ...done, text: `${r.approver_name} approved this chat's request to join #${r.room?.name || "the room"} as ${r.name}: finished here, this chat is ${r.name} now.\n${done.text}` } : done);
+  }
+  return out;
+}
 
 export async function joinWait(o: { id?: string | null; maxMs: number; signal?: AbortSignal; /** something that can wake this chat is already set up (bot-link's hooks, watch): the wake test goes out right after the join. false: with the first listen */ wakeReady?: boolean } & ChatRef): Promise<WaitOutcome> {
   const req = latestRequest(o.id, { app: o.app, session: o.session, cwd: o.cwd });
@@ -1176,7 +1315,8 @@ async function finishApproval(req: st.RequestRec, view: any, wakeReady = true): 
     told: prior?.told ?? snapOf(vst), spoke: prior?.spoke ?? snapOf(vst),
   };
   // Cursor: the chat that runs join is the one watch resumes (its shell commands get CURSOR_CONVERSATION_ID)
-  if (m.app === "cursor") m.wake_chat = cursorChatFromEnv() ?? prior?.wake_chat ?? null;
+  // (the Cursor chat the request recorded: the same id every later command matches with; session.ts cursorChatOf)
+  if (m.app === "cursor") m.wake_chat = req.cursor_chat ?? cursorChatFromEnv() ?? prior?.wake_chat ?? null;
   m.wake_thread = req.wake ?? prior?.wake_thread ?? null;
   st.saveMember(m);
   replaceEarlier(m); // a membership of this room and name the person removed goes now, keys and all (memberend.ts)
@@ -1282,7 +1422,7 @@ export function reachableBlock(m: { name: string; app: st.App; app_name?: string
 /** After `join` (real-world run 2026-11-07: Codex and Cursor showed the code, then ended the turn with "tell me once
  *  approved", so the human had to come back and type): show the code AND wait, in the same turn. */
 export function waitSameTurn(waitCmd: string): string {
-  return `Now, in this same turn: show your human the approve link and the code (one short message), then run \`${waitCmd}\` right away. Don't end your turn to wait for them to say "approved": they approve in the browser, and the wait returns the moment they do. If nobody approved within about 100 s it ends with exit 3: the request still waits, so run it again (the same request; nothing new is sent).`;
+  return `Now, in this same turn: show your human the approve link and the code (one short message), then run \`${waitCmd}\` right away. Don't run join with the invite again (not under another name either): this chat's request is made, and the wait finishes it. Don't end your turn to wait for them to say "approved": they approve in the browser, and the wait returns the moment they do. If nobody approved within about 100 s it ends with exit 3: the request still waits, so run it again (the same request; nothing new is sent).`;
 }
 
 // ------------------------------------------------------------------ self-test (SPEC §6.4a: verified delivery)
@@ -2719,7 +2859,25 @@ export async function askHuman(m: st.MemberRec, reason: "needs_ok" | "cannot_wak
   return reason === "needs_ok" ? `${base} If another member asked you for this, now reply to that member (bot-link reply tool) that you're waiting for ${who === "Your human" ? "your human" : who}'s OK and will get back to them, then stop.` : base;
 }
 
-export async function leave(m: st.MemberRec, session: string | null): Promise<string> {
+/**
+ * Leaving is refused while this chat's own join or move for that room still waits, or was approved and is not
+ * finished yet (founder bug 21 Nov 2026: the chat left mid-way and made things worse; the person's approval then has
+ * nothing to land on). me: the calling chat (ownRequest); without it, any request for that room on this computer.
+ */
+async function unfinishedFor(m: st.MemberRec, me?: ChatRef): Promise<string | null> {
+  for (const r of st.allRequests().filter((x) => (x.kind === "join" || x.kind === "claim") && x.server === m.server && (x.room?.id === m.room.id || x.room?.name === m.room.name) && (!me || ownRequest(x, me)))) {
+    if (r.expires_at && Date.parse(r.expires_at) < Date.now()) continue;
+    const view = await waitCall(r, 0, { timeoutMs: 5_000, retryForMs: 0 }).catch((e) => (e instanceof ApiError && (e.status === 404 || e.status === 403) ? { status: "gone" } : { status: "pending" }));
+    const what = r.kind === "claim" ? `the move of ${r.name} to this chat` : `this chat's request to join as ${r.name}`;
+    if (view?.status === "approved") return `${r.approver_name} approved ${what} in #${m.room.name}, and it is not finished yet. Don't leave now: finish it first with \`${selfCmd()} ${r.kind === "claim" ? "claim" : "join"} --wait\`. Then leave if your human still wants that.`;
+    if (view?.status === "pending") return `${what[0].toUpperCase()}${what.slice(1)} in #${m.room.name} is still waiting for ${r.approver_name} to approve (${approveLink(r)} · code ${groupCode(r.match_code)}). Don't leave now: wait for it with \`${selfCmd()} ${r.kind === "claim" ? "claim" : "join"} --wait\`, or ask your human to reject it on the dashboard first. Then leave if your human still wants that.`;
+  }
+  return null;
+}
+
+export async function leave(m: st.MemberRec, session: string | null, me?: ChatRef): Promise<string> {
+  const waiting = await unfinishedFor(m, me);
+  if (waiting) throw new UserError(`Not left #${m.room.name}. ${waiting}`);
   session = session ?? m.holder_session; // the server only takes a held member's calls from its own chat (SPEC §6.7a)
   const s = signerOf(m);
   for (let i = 0; i < 4; i++) {

@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 
+	"github.com/charles161/botlink/server/internal/faults"
 	"github.com/charles161/botlink/server/internal/httpx"
 	"github.com/charles161/botlink/server/internal/ratelimit"
 	"github.com/charles161/botlink/server/internal/store"
@@ -115,6 +116,7 @@ func (a *API) postRoomDraft(w http.ResponseWriter, r *http.Request, c *Caller) e
 	reqHash := wire.SHA256(c.Body)
 	caller := DraftCallerKey(httpx.ClientIP(r, a.Cfg.TrustCF))
 	status := 201
+	var v map[string]any
 	err = a.St.Tx(ctx, func(tx pgx.Tx) error {
 		// one create at a time per caller, so the per-caller caps count exactly; a create that would queue behind its
 		// caller's others answers 429 instead of holding a connection (security review: one server-wide lock let
@@ -134,11 +136,13 @@ func (a *API) postRoomDraft(w http.ResponseWriter, r *http.Request, c *Caller) e
 			return err
 		}
 		var oldHash []byte
-		err := tx.QueryRow(ctx, `select request_hash from room_drafts where id = $1`, d.ID).Scan(&oldHash)
+		// for share: a replay's answer is read from this row below; an eviction skips it meanwhile, a delete waits
+		err := tx.QueryRow(ctx, `select request_hash from room_drafts where id = $1 for share`, d.ID).Scan(&oldHash)
 		if err == nil {
 			if bytes.Equal(oldHash, reqHash) {
 				status = 200
-				return nil
+				v, err = a.draftView(ctx, tx, d.ID)
+				return err
 			}
 			return httpx.E(409, "id_conflict", "A different request already used this id.")
 		}
@@ -185,13 +189,16 @@ func (a *API) postRoomDraft(w http.ResponseWriter, r *http.Request, c *Caller) e
 		case store.IsUniqueViolation(err, "room_drafts_open_key"):
 			return httpx.E(409, "key_in_use", "This key is already in use. Make a new one.")
 		}
+		if err != nil {
+			return err
+		}
+		v, err = a.draftView(ctx, tx, d.ID)
 		return err
 	})
 	if err != nil {
 		return err
 	}
-	v, err := a.draftView(ctx, a.St.Pool, d.ID)
-	if err != nil {
+	if err := faults.Point(ctx, "draft_after_create", 0); err != nil {
 		return err
 	}
 	httpx.WriteJSON(w, status, v)

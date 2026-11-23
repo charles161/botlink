@@ -13,6 +13,10 @@ info:
       **no approve, room-management or invite-creation routes**.
     Errors: always `{"error": {"code", "message", "retry_after_s"?, "details"?}}` (schema `Error`).
     Long-polls return 200 with empty results on timeout, never an error.
+    Every `/api/v1/` answer names the client the server hands out now: `X-Botlink-Client-Current` (its version),
+    `X-Botlink-Client-Url` (its versioned download URL) and `X-Botlink-Client-Current-Release` (its signed release
+    number), when the server serves a client. POST join-requests, room-drafts and me/claim may answer
+    `409 client_outdated` to an outdated client (SPEC §7.6); reading and sending never do.
     Any endpoint may also return 401/403 (auth), 429 (rate_limited, with Retry-After) and 500/503 (503 high_load: a
     long wait turned away at the copy's cap, with Retry-After); only the
     endpoint-specific error codes are listed per operation.
@@ -108,7 +112,7 @@ paths:
     get:
       operationId: getClientTarball
       tags: [open]
-      summary: The client tarball (`npx -y https://<api host>/dl/botlink.tgz …`). API host only; off when the server has no tarball configured
+      summary: The client tarball (`npx -y --allow-remote=all https://<api host>/dl/botlink.tgz …`). API host only; off when the server has no tarball configured
       description: >-
         ETag is the quoted hex sha256 of the bytes; Cache-Control no-cache; If-None-Match → 304. Kept for old
         instructions and the self-update; everything that tells someone what to run names the versioned URL
@@ -211,7 +215,7 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "404": { description: "invite_invalid | member_not_found", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
-        "409": { description: "name_taken (details.suggestion) | id_conflict | room_full | key_in_use", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "409": { description: "name_taken (details.suggestion; details.pending + details.same_machine when only a waiting request holds the name) | join_pending (details.name: this computer, folder, app, app name and session already have a waiting join in this room under that name) | already_member (details.name: a member with those words and that holder session is in the room); both guard confused clients on unsigned display words, not a security control | id_conflict | room_full | key_in_use", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
         "429": { $ref: "#/components/responses/Error" }
   /api/v1/join-requests/{id}/wait:
     post:
@@ -3376,7 +3380,9 @@ components:
         - superseded           # 409 a newer long-poll replaced this one
         - recipients_changed   # 409 details: RecipientsChanged
         - id_conflict          # 409 same id, different body/sender
-        - name_taken           # 409 details.suggestion
+        - name_taken           # 409 details.suggestion; on a join: details.pending (true: only a waiting request holds the name, not a member) and details.same_machine (that request names the computer this one names)
+        - join_pending         # 409 on a join: a request from the same computer, folder, app, app name and session waits in this room under details.name (one waiting join per chat)
+        - already_member       # 409 on a join: a member with the same computer, folder, app, app name and holder session is in this room as details.name (one identity per chat)
         - already_decided      # 409 details.status
         - batch_changed        # 409 approving several chats: some ticked ones no longer wait for you (details.items: [{id, reason: already_decided | expired | not_found}]); nothing approved; the human check is spent (ask a new one)
         - roster_conflict      # 409 head moved; refetch and re-sign
@@ -3419,6 +3425,7 @@ components:
         - delete_not_ready     # 409 account delete: the wait isn't over (details.ready_at)
         - delete_lapsed        # 409 account delete: the time to finish it passed; ask again
         - client_too_old       # 426 below BOTLINK_MIN_CLIENT_RELEASE (header X-Botlink-Client-Release, details.min_release; no header outside dev also; SPEC §7.6)
+        - client_outdated      # 409 join request, room draft or claim from an outdated client: below BOTLINK_MIN_JOIN_CLIENT_VERSION (header X-Botlink-Client-Version; no header outside dev also), or older than the served client while it sends X-Botlink-Client-Stale: refuse (details.reason, current_version, url, min_version; SPEC §7.6)
 
     # ── wire objects (crypto/ENVELOPE.md)
     Envelope:

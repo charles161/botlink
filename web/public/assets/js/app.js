@@ -8,6 +8,7 @@ import "./notify.js"; // requests to join: a card on every page, the count in th
 import "./deletebanner.js"; // a waiting account delete, on every signed-in page
 import { hostRoute } from "./hosts.js"; // which host owns a path: the server's host table
 import { PAID_TEXT } from "./paid-text.js";
+import { githubLink } from "./github-link.js";
 
 // ── theme (auto, with a remembered override) ────────────────────────────────
 const THEME_KEY = "botlink-theme";
@@ -244,9 +245,10 @@ function renderNav() {
     const dark = themeIsDark();
     const themeSwitch = h("button", { type: "button", class: "icon-btn theme-btn", "aria-label": dark ? "Switch to light mode" : "Switch to dark mode", title: dark ? "Light mode" : "Dark mode" }, icon(dark ? "sun" : "moon"));
     themeSwitch.addEventListener("click", () => { toggleTheme(); renderNav(); $(".theme-btn")?.focus(); });
-    nav.append(
+    fill(nav,
       sections,
       h("a", { href: "/docs", class: "nav-link hide-sm" }, "Docs"),
+      githubLink(),
       h("a", { href: loginUrl(location.pathname === "/" ? "/rooms" : undefined), class: "nav-link" }, "Sign in"),
       themeSwitch);
     return;
@@ -287,8 +289,9 @@ function renderNav() {
     else if (e.key === "ArrowUp") { e.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
   });
   outsideClose = (e) => { if (!menu.hidden && !menu.contains(e.target) && !btn.contains(e.target)) close(); };
-  nav.append(
+  fill(nav,
     sections,
+    githubLink(),
     h("a", { href: "/rooms", class: "nav-link" }, "Your rooms", count ? h("span", { class: "count-dot", "aria-label": `${count} waiting for you` }, String(count)) : null),
     h("div", { class: "menu-wrap" }, btn, menu));
 }

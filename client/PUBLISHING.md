@@ -1,7 +1,9 @@
 # Publishing the client to npm (`@botlink/cli`)
 
-Published: `@botlink/cli@1.0.0` has been on npm since 20 Nov 2026 and is `latest`. The invite page still names the
-server's own download (`npx -y https://api.botlink.dev/dl/botlink-<16 hex>.tgz …`); the README's "By hand" block names
+Published: `@botlink/cli@1.0.0` has been on npm since 20 Nov 2026 and is `latest`; `1.0.2` (the stale-client fix and the
+npm 12 flag on every printed URL command) is published from the commit that goes live with it. `1.0.1` was recorded for
+the stale-client fix but never released anywhere; it is skipped. The invite page still names the
+server's own download (`npx -y --allow-remote=all https://api.botlink.dev/dl/botlink-<16 hex>.tgz …`); the README's "By hand" block names
 the npm command, always with its version.
 
 Two older versions exist on npm, `0.0.1` and `0.0.0-stage`: placeholders with no command. A computer that ran
@@ -11,16 +13,28 @@ run"). The fix on that computer is the command with its version, `npx -y @botlin
 `rm -rf ~/.npm/_npx`. A version or `@latest` is looked up again and works (checked against a cache holding 0.0.1 with
 npm 8.19, 9.6, 9.9, 10.2, 10.8 and 11.6). This is why every line bot-link prints or documents carries the version.
 
+## Every client release has its own version (from 1.0.1, incident 21 Nov 2026)
+
+1.0.0 shipped several different clients under one version, and a chat kept running an old one from npx's cache with
+nothing to tell them apart. Now a client that changes gets a new version, enforced three times:
+`client/release-fingerprint.json` records the version released last and a fingerprint of the client's files; the client
+test `test/releaseversion.test.ts` and `evals/gate.sh` fail with "client changed since <v> was released: bump the
+version in package.json and run `cd client && npm run release:bump`"; and `deploy/deploy.sh` compares the new tarball
+with the live one (`deploy/lib/build.sh check_client_version`) and refuses a changed client under the live version
+before anything is switched. `npm run release:bump` sets the next patch version in `package.json`, `package-lock.json`
+and the README's pinned lines and records the fingerprint; commit those four files. The repo carries the version: there
+is no `npm version` step at publish time.
+
 ## The command (Charles, from a clean checkout of the commit that is live in prod)
 
 ```bash
 cd client && npm ci && npm test
-npm version 1.0.0 --no-git-tag-version     # a real x.y.z; pack:npm refuses a -dev version
-npm run pack:npm                           # prints .../client/botlink-cli-1.0.0.tgz (renamed copy, checked)
-npm publish botlink-cli-1.0.0.tgz --access public
+npm run release:check                       # "client 1.0.2: unchanged since it was recorded"
+npm run pack:npm                           # prints .../client/botlink-cli-1.0.2.tgz (renamed copy, checked)
+npm publish botlink-cli-1.0.2.tgz --access public
 ```
 
-Then commit the version bump and deploy, so the `/dl` tarball and npm carry the same version. `npm publish` straight
+The `/dl` tarball of that commit and npm then carry the same version and the same files. `npm publish` straight
 from `client/` is refused on purpose (`prepublishOnly`): the repo package is named `botlink`, which installed clients
 check before they take an update.
 

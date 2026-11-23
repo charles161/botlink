@@ -571,10 +571,11 @@ function readFacts(R, cited, paywall = PAYWALL) {
   const loose = deps.filter(([, v]) => !/^\d+\.\d+\.\d+(-[\w.]+)?$/.test(v)).map(([k]) => k);
   if (loose.length) throw new Error(`client/package.json: dependencies not pinned to one exact version: ${loose.join(", ")}`);
   R.at("dependencies pinned", "client/package.json", /"dependencies":\s*\{/);
-  R.at("every build has this version", "SPEC.md", new RegExp("every build is `" + pkg.version.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "`"));
+  R.at("every release has its own version", "client/release-fingerprint.json", new RegExp('"version":\\s*"' + pkg.version.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + '"'));
+  R.at("a changed client under the same version is refused", "deploy/lib/build.sh", /^check_client_version\(\)/m);
   R.at("release carries a lock", "deploy/lib/build.sh", /grep -x "package\/npm-shrinkwrap\.json"/);
   R.at("updater installs from the lock", "client/src/update.ts", /npm-shrinkwrap\.json/);
-  F.client = { name: pkg.name, version: pkg.version, node: pkg.engines?.node || "", dependencies: deps.length, src: ["client/package.json", "SPEC.md", "deploy/lib/build.sh", "client/src/update.ts"] };
+  F.client = { name: pkg.name, version: pkg.version, node: pkg.engines?.node || "", dependencies: deps.length, src: ["client/package.json", "client/release-fingerprint.json", "deploy/lib/build.sh", "client/src/update.ts"] };
 
   const keys = R.at("pinned release key", "client/src/release.ts", /RELEASE_KEYS[^=]*=\s*\[\s*((?:\{\s*id:\s*"[0-9a-f]{16}",\s*pk:\s*"[0-9a-f]{64}"\s*\},?\s*)+)\]/);
   const pinned = [...keys[1].matchAll(/id:\s*"([0-9a-f]{16})",\s*pk:\s*"([0-9a-f]{64})"/g)].map((m) => ({ id: m[1], pk: m[2] }));
@@ -595,13 +596,14 @@ function readFacts(R, cited, paywall = PAYWALL) {
   R.at("bot-link hosts only (update)", "client/src/update.ts", /the update address is not bot-link's/);
   const hosts = JSON.parse(R.at("bot-link hosts", "client/src/hosts.ts", /BOTLINK_HOSTS\s*=\s*(\[[^\]]*\])/)[1]);
   const everyH = Number(R.at("update interval", "client/src/update.ts", /: (\d+) \* 3600\) \* 1000/)[1]);
+  const behindMin = Number(R.at("update when behind", "client/src/stale.ts", /const AGAIN_MS = (\d+) \* 60_000;/)[1]);
   const noUpdate = R.at("updates off", "client/src/update.ts", /process\.env\.(BOTLINK_NO_UPDATE) === "1"/)[1];
   R.at("first install trusts the server once", "SPEC.md", /a first install \(`npx` of the tarball URL\) trusts the server once/);
   R.at("key outside the repository and deploys", "deploy/release-sign.mjs", /The key lives OUTSIDE the repository and outside anything that is deployed/);
   const dl = R.at("download address", "web/public/assets/js/views/landing.js", /FIXED_CLIENT = "(https:\/\/[^"]+\/dl\/botlink\.tgz)"/)[1];
   R.at("server serves the signed release", "server/internal/pages/download.go", /Manifest serves GET\|HEAD \/dl\/botlink\.manifest\.json/);
   if (!dl.startsWith("https://api.botlink.dev/")) throw new Error(`landing.js: the download address moved (${dl}); the commands on the page name api.botlink.dev`);
-  F.updates = { keys: pinned, domain, manifest_path: mpath, spki_prefix: spki, max_mib: maxMiB, hosts, every_h: everyH, off: noUpdate, download: dl, src: ["client/src/release.ts", "client/src/update.ts", "client/src/hosts.ts", "deploy/release-sign.mjs", "SPEC.md", "web/public/assets/js/views/landing.js", "server/internal/pages/download.go"] };
+  F.updates = { keys: pinned, domain, manifest_path: mpath, spki_prefix: spki, max_mib: maxMiB, hosts, every_h: everyH, behind_min: behindMin, off: noUpdate, download: dl, src: ["client/src/release.ts", "client/src/update.ts", "client/src/stale.ts", "client/src/hosts.ts", "deploy/release-sign.mjs", "SPEC.md", "web/public/assets/js/views/landing.js", "server/internal/pages/download.go"] };
 
   // 2. what the server sees: one request, built from the test vector
   const vec = JSON.parse(R.text("crypto/vectors/envelope.json"));
@@ -981,7 +983,7 @@ function render(F) {
 
   // 1
   out.push(h("h2", { id: "client" }, "What runs on your computer"));
-  out.push(h("p", null, "The client is the package ", code(F.client.name), ", version ", code(F.client.version), ". Every build carries that version, so releases are told apart by the sha256 of the file, which the signed release names. It needs Node ", code(F.client.node), ". Its ", String(F.client.dependencies), " dependencies are each pinned to one exact version, and every release file carries a lock file with a hash for each package."));
+  out.push(h("p", null, "The client is the package ", code(F.client.name), ", version ", code(F.client.version), ". Every client release has its own version: a client that changed under the version already released is refused by the build and by the deploy. The signed release also names the sha256 of the file. It needs Node ", code(F.client.node), ". Its ", String(F.client.dependencies), " dependencies are each pinned to one exact version, and every release file carries a lock file with a hash for each package."));
   out.push(srcNote(F.client.src));
   out.push(h("h3", null, "How updates are signed"));
   out.push(h("ul", null,
@@ -991,7 +993,7 @@ function render(F) {
     h("li", null, "Each release has a number that only goes up. A client refuses a release older than one it already took, and a second file under the same number."),
     h("li", null, `The file must match the signed sha256 and size exactly, and be at most ${u.max_mib} MiB.`),
     h("li", null, "Updates come over https only, and only from bot-link's own hosts (", u.hosts.map((x, i) => [i ? ", " : "", code(x)]), " and its subdomains)."),
-    h("li", null, `It checks at most every ${u.every_h} hours. `, code(`${u.off}=1`), " turns updates off."),
+    h("li", null, `It checks at most every ${u.every_h} hours, and sooner (at most every ${u.behind_min} minutes) when its server's answers say a newer client is out. `, code(`${u.off}=1`), " turns updates off."),
     h("li", null, "A test key can replace the pinned one only when ", code("BOTLINK_DEV=1"), " is set, which an install never sets."),
     h("li", null, "The private key is not in the repository and not in anything that is deployed. Today it sits on the server machine, and releases are signed there during a deploy. Signing on another machine is built (", code("BOTLINK_RELEASE_SIGNING=external"), ") and not yet in use."),
     h("li", null, h("strong", null, "Known limit: "), "the first install (running the download with npx) trusts our server once. A computer with no earlier release can be given an older signed release, never an unsigned one.")));

@@ -13,6 +13,7 @@ import { appendSignedChain, memberAddOp } from "./roster.js";
 import { app, refreshNeeds } from "./app.js";
 import { BATCH_ACTION, batchRooms, joinProblems, preSignProblems } from "./batch.js";
 import { matchCode } from "./needs.js";
+import { joinTries } from "./tries.js";
 
 const CARD_NOTE = {
   changed: "This request changed. Check it again.",
@@ -28,8 +29,12 @@ const listNames = (names) => (names.length < 2 ? names.join("") : `${names.slice
  * The rooms of this draw that get tick boxes: room_id → {el (the group: its cards, then the bar), add(cardEl), forCard}.
  * forCard is what joinCard gets as `batch`: tickRow(card, {fpReady, blockReady}) draws the tick box of one card.
  */
-export function batchGroups(joins, ticks, { onDone } = {}) {
-  ticks.reconcile(joins);
+export function batchGroups(joins, ticks, { onDone, all = joins } = {}) {
+  // joins: the requests a card shows (a card of tries by its newest, needs-tries.js); all: every waiting request. A
+  // ticked request that a newer try from its place pushed under "Older tries" loses its tick, and the bar says why.
+  for (const lost of ticks.reconcile(joins)) {
+    if (lost.reason === "gone" && all.some((c) => c.id === lost.id)) ticks.setRoomNote(lost.room_id, `A newer try came from where ${lost.name} runs, so its tick was cleared. Compare the codes again.`);
+  }
   const out = new Map();
   for (const [roomId, list] of batchRooms(joins)) out.set(roomId, group(roomId, list, ticks, onDone));
   return out;
@@ -170,7 +175,7 @@ function group(roomId, list, ticks, onDone) {
     ticks.setRoomNote(roomId, text);
     await refreshNeeds();
     // the bar goes away when fewer than two chats are left waiting here: say it where it still shows
-    if (text && !batchRooms(app.needs?.join_requests).has(roomId)) toast(text, "error", 7000);
+    if (text && !batchRooms(joinTries(app.needs?.join_requests).map((u) => u.newest)).has(roomId)) toast(text, "error", 7000);
     onDone?.();
   }
 

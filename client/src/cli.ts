@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * botlink …   (PLAN §3.2; run as `npx -y <server>/dl/botlink.tgz …` or the `botlink` launcher setup puts on PATH)
+ * botlink …   (PLAN §3.2; run as `npxRun(<server>/dl/botlink.tgz) …` (version.ts) or the `botlink` launcher setup puts on PATH)
  * Talk (works in any terminal, no app restart):  roster · send · inbox · reply · status   [--as <name>] [--room <r>] [--session <id>]
  * Join:   join <invite> --name <n> --job <j> [--app-name "<app>"] [--session <id>]  ·  join --wait
  * Rooms:  create-room --room <r> --purpose "<p>" --name <n> --job <j> (a person confirms it) · invite-link [--as <n>]
@@ -14,7 +14,7 @@ import { realpathSync } from "node:fs";
 import * as c from "./crypto.js";
 import * as st from "./state.js";
 import * as core from "./core.js";
-import { appRun, chatFolder, currentSession, cursorChatFromEnv, detectApp, headlessRun, machineName, mcpToolsLoaded, setExplicitSession, t3ThreadFromEnv, tildeFolder } from "./session.js";
+import { appRun, chatFolder, chatSession, currentSession, cursorChatOf, cursorChatFromEnv, holderSession, detectApp, headlessRun, machineName, mcpToolsLoaded, setExplicitSession, t3ThreadFromEnv, tildeFolder } from "./session.js";
 import { applySetup, configuredHere, localInstallProblem, migrateToShim, previewSetup, serviceInstalledFor, uninstallAll, watchInstall, watchStatus, watchUninstall, reportLines, type SetupApp, SETUP_APPS } from "./setup.js";
 import * as h from "./harnesses.js";
 import * as upd from "./update.js";
@@ -48,6 +48,8 @@ export function parseArgs(argv: string[]): Args {
   return a;
 }
 const TEXT = new Set(["text", "job", "on-message", "summary", "purpose"]);
+/** Commands that act as this chat's member: a join of this chat approved while nobody waited is finished first. */
+const SETTLES = new Set(["roster", "send", "send-anyway", "inbox", "reply", "status", "wait", "label", "selftest", "invite-link", "presence", "rules", "report"]);
 /** Is a person at a terminal running this (not a command an app's chat ran)? No app around it, and a real terminal. */
 function humanTerminal(): boolean {
   if (process.env.BOTLINK_DEV === "1" && process.env.BOTLINK_TEST_TERMINAL) return process.env.BOTLINK_TEST_TERMINAL === "1";
@@ -62,7 +64,7 @@ const str = (v: unknown) => (typeof v === "string" ? v : undefined);
 
 function appArg(a: Args): st.App {
   const v = str(a.app);
-  if (v && ["claude-code", "codex", "cursor", "opencode", "t3", "other"].includes(v)) return v as st.App;
+  if (v && ["claude-code", "codex", "cursor", "opencode", "t3", "antigravity", "other"].includes(v)) return v as st.App;
   return detectApp();
 }
 
@@ -75,7 +77,7 @@ function who(app: st.App): core.Who {
 /** The member a command acts as: --as <name> (this app's, and only if this chat may act as it), else this chat's own. */
 function cliMember(a: Args): st.MemberRec {
   const app = detectApp();
-  const sess = currentSession().id;
+  const sess = chatSession(app);
   const as = str(a.as);
   // an explicit name: only a member this chat may act as (its own session's, or its app's holder-less one; never
   // another app's or another chat's: founder)
@@ -84,7 +86,7 @@ function cliMember(a: Args): st.MemberRec {
 }
 
 /** The session header a member's calls carry: its holder (it may be acting from a listener / CLI without the app's env). */
-const sessFor = (m: st.MemberRec) => m.holder_session ?? currentSession().id;
+const sessFor = (m: st.MemberRec) => m.holder_session ?? chatSession(detectApp());
 
 const B = () => selfCmd();
 const HELP = () => `bot-link ${VERSION}: put your AI chats in a room.
@@ -184,7 +186,7 @@ async function waitCmd(a: Args, label: string): Promise<number> {
   const app = appArg(a);
   let r: core.WaitOutcome;
   try {
-    r = await core.joinWait({ id: str(a.id) || null, maxMs, app, session: currentSession().id, cwd: chatFolder() || process.cwd(), wakeReady: wakeReadyFor(app) });
+    r = await core.joinWait({ id: str(a.id) || null, maxMs, app, session: chatSession(app), cwd: chatFolder() || process.cwd(), wakeReady: wakeReadyFor(app) });
   } catch (e) {
     if (e instanceof core.AlreadyJoined) {
       out(e.message);
@@ -213,8 +215,8 @@ async function waitCmd(a: Args, label: string): Promise<number> {
  *  test goes out right after the join, as before. A chat with nothing set up picks its own way to listen first, and is
  *  tested when it starts listening (Kickoff 2). */
 export function wakeReadyFor(app: st.App): boolean {
-  // T3 Code: the provider's own hooks (Claude Code / Codex) are not bot-link's wake path in a T3 thread
-  if (app === "other" || app === "t3") return false;
+  // T3 Code / Antigravity: no built-in bot-link hooks installed into these apps
+  if (app === "other" || app === "t3" || app === "antigravity") return false;
   try {
     return !!configuredHere(app) || serviceInstalledFor(app);
   } catch {
@@ -239,20 +241,25 @@ export function talkNow(name: string, sessionKnown = false): string {
 
 /** `botlink status`: which chat this is (app, session and where that came from), which member it acts as, how messages
  *  reach each member, the last self-test, listeners and watch. Separates "member", "tools ready" and "delivery". */
-async function statusText(): Promise<string> {
+async function statusText(room?: string): Promise<string> {
   const lines: string[] = [];
   const ms = st.liveMembers();
   const rs = st.allRequests();
-  const s = currentSession();
+  const s = currentSession(); // shown as found; this chat's identity is chatSession(app)
   const app = detectApp();
   const label = (h.LABELS as Record<string, string>)[app] || "a terminal (no app detected)";
   const src: Record<string, string> = { explicit: "--session", "env:BOTLINK_SESSION": "BOTLINK_SESSION", hook: "the app's hook", "app-link": "the app (its hooks recorded it)", "app-env": "the app's environment", none: "" };
-  const mine = new Set(core.heldBy(s.id, who(app)).map((m) => m.id));
-  const cur = app === "cursor" ? cursorChatFromEnv() : null;
-  lines.push(`This chat: ${label}${s.id ? ` · session ${s.id} (from ${src[s.source]})` : cur ? ` · Cursor chat ${cur} (CURSOR_CONVERSATION_ID: a Cursor member is the Cursor chat that joined)` : " · no session id (found by folder)"} · ${tildeFolder(chatFolder() || process.cwd())}`);
-  lines.push(mine.size ? `Acting as: ${ms.filter((m) => mine.has(m.id)).map((m) => `${m.name} in #${m.room.name}`).join(", ")}` : "Acting as: nobody (not a member here).");
+  const mine = new Set(core.heldBy(chatSession(app, s.id), who(app)).map((m) => m.id));
+  // the identity every command of this chat uses (session.ts chatSession), not every id it was given
+  const sid = chatSession(app, s.id), ccur = app === "cursor" ? cursorChatOf(app, s.id) : null;
+  lines.push(`This chat: ${label}${ccur ? ` · Cursor chat ${ccur} (a Cursor member is the Cursor chat that joined)` : sid ? ` · session ${sid} (from ${src[s.source]})` : ` · no session id (found by folder)${s.id && app === "opencode" ? `; session ${s.id} is only where bot-link wakes it` : ""}`} · ${tildeFolder(chatFolder() || process.cwd())}`);
+  // --room: only that room (founder bug 21 Nov 2026: `status --room neon` answered with the chat's member of #test1)
+  const r0 = room?.replace(/^#/, "");
+  const acting = ms.filter((m) => mine.has(m.id) && (!r0 || m.room.name === r0 || m.room.id === r0));
+  const waitingThere = r0 ? rs.filter((r) => r.kind === "join" && r.room?.name === r0) : [];
+  lines.push(acting.length ? `Acting as: ${acting.map((m) => `${m.name} in #${m.room.name}`).join(", ")}` : r0 ? `Acting as in #${r0}: nobody (this chat is not a member of #${r0}${waitingThere.length ? `; its request to join as ${waitingThere[0].name} is waiting for approval: finish it with \`${selfCmd()} join --wait\`` : ""}).` : "Acting as: nobody (not a member here).");
   // listen lab #7: bot-link's MCP server may be loaded without setup (--mcp-config): what runs counts, not the config
-  if (app !== "other" && app !== "t3") lines.push(`Tools: ${mcpToolsLoaded() ? "this chat has the bot-link tools" : configuredHere(app) ? `set up for ${label}, loaded after a restart` : `not set up in ${label} (see \`${selfCmd()} setup ${app}\`)`}; the command line works either way.`);
+  if (app !== "other" && app !== "t3" && app !== "antigravity") lines.push(`Tools: ${mcpToolsLoaded() ? "this chat has the bot-link tools" : configuredHere(app) ? `set up for ${label}, loaded after a restart` : `not set up in ${label} (see \`${selfCmd()} setup ${app}\`)`}; the command line works either way.`);
   // staging tester, 17 Nov 2026 (L.1): status named no command to run bot-link again; help, join and create-room did
   lines.push(`Run bot-link here with: ${selfCmd()} <command>   (\`${selfCmd()} --help\` lists them)`);
   if (!ms.length && !rs.length) lines.push("No bot-link members on this computer.");
@@ -325,7 +332,7 @@ export function restartLine(app: st.App, claimed: string | null = null): string 
   const label = (h.LABELS as Record<string, string>)[app] || "this app";
   // a chat that named itself another app (core.claimedApp): what bot-link sets up is for the app it detected, not this one
   if (claimed) return mcpToolsLoaded() ? "This chat already has the bot-link tools; no restart needed." : `bot-link has no set-up for ${claimed}; the commands above are how this chat uses bot-link.`;
-  if (app === "other" || app === "t3") return "bot-link has no tools for this app; the commands above are how this chat uses bot-link.";
+  if (app === "other" || app === "t3" || app === "antigravity") return "bot-link has no tools for this app; the commands above are how this chat uses bot-link.";
   // listen lab #7: the tools may be loaded without setup (an MCP config passed to the app): say what is true
   if (mcpToolsLoaded()) return "This chat already has the bot-link tools; no restart needed.";
   const where = configuredHere(app);
@@ -348,7 +355,7 @@ export async function main(argv: string[]): Promise<number> {
       const L = await import("./listening.js");
       let me: st.MemberRec | null = null;
       try {
-        me = core.heldBy(currentSession().id, who(detectApp()))[0] || null;
+        me = core.heldBy(chatSession(detectApp()), who(detectApp()))[0] || null;
       } catch {
         me = null;
       }
@@ -384,7 +391,19 @@ export async function main(argv: string[]): Promise<number> {
     if (str(a.session)) setExplicitSession(str(a.session)!);
     await c.ready();
     // H1: a member this chat held moved to another chat (its person approved): say so first, once
-    if (!["listen", "watch", "uninstall", "update"].includes(cmd)) for (const l of st.takeLost(currentSession().id)) out(st.lostText(l));
+    if (!["listen", "watch", "uninstall", "update"].includes(cmd)) for (const l of st.takeLost(chatSession(detectApp()))) out(st.lostText(l));
+    // a join of this chat that its person approved while nobody waited is finished before anything else (core.settleApproved)
+    if (SETTLES.has(cmd)) {
+      const app = appArg(a);
+      for (const d of await core.settleApproved({ app, session: chatSession(app), cwd: chatFolder() || process.cwd(), wakeReady: wakeReadyFor(app) })) {
+        out(d.text);
+        if (d.status === "approved" && d.member) {
+          const L = await import("./listen.js");
+          const ext = await L.extendWake(d.member).catch((e) => `bot-link couldn't start this chat's wake path for #${d.member!.room.name}: ${e instanceof Error ? e.message : e}`);
+          if (ext) out(ext);
+        }
+      }
+    }
     switch (cmd) {
       case "up":
       case "setup": {
@@ -424,12 +443,11 @@ export async function main(argv: string[]): Promise<number> {
         }
         const t = str(a.turn);
         const turn: st.Turn = t === "listening" || t === "on_turn" || (t === "wake" && (app === "claude-code" || app === "codex" || app === "cursor")) ? t : serviceInstalledFor(app) ? "wake" : "on_turn";
-        const s = currentSession();
-        // Cursor's MCP server serves a whole window (no chat id): Cursor members are found by folder, never held
-        const session = app === "cursor" || app === "opencode" || app === "other" ? null : s.id;
-let r: Awaited<ReturnType<typeof core.joinCreate>>;
+        // the identity every later command of this chat uses (session.ts chatSession / holderSession)
+        const session = holderSession(app);
+        let r: Awaited<ReturnType<typeof core.joinCreate>>;
         try {
-          r = await core.joinCreate({ invite, name: str(a.name)!, job: str(a.job)!, app, app_name: str(a["app-name"]), appNameWord: "--app-name", turn, session, cwd: chatFolder() || process.cwd(), folder: tildeFolder(chatFolder() || process.cwd()), machine: str(a.machine) || machineName(), wake: wakeThread(a, app), wakeReady: wakeReadyFor(app) });
+          r = await core.joinCreate({ invite, name: str(a.name)!, job: str(a.job)!, app, app_name: str(a["app-name"]), appNameWord: "--app-name", turn, session, cursorChat: cursorChatOf(app), cwd: chatFolder() || process.cwd(), folder: tildeFolder(chatFolder() || process.cwd()), machine: str(a.machine) || machineName(), wake: wakeThread(a, app), wakeReady: wakeReadyFor(app) });
         } catch (e) {
           if (e instanceof core.AlreadyJoined) {
             out(e.message); // it is in already: an answer, not an error
@@ -467,8 +485,7 @@ let r: Awaited<ReturnType<typeof core.joinCreate>>;
           out(`Propose the room name, its purpose, this chat's name and its job to your human, then run: ${selfCmd()} create-room --room <room name> --purpose "<what it is for>" --name <this chat's name> --job "<job>"${app === "other" ? ' --app-name "<the app you run in>"' : ""}`);
           return 2;
         }
-        const s = currentSession();
-        const session = app === "cursor" || app === "opencode" || app === "other" ? null : s.id;
+        const session = holderSession(app);
         const t = str(a.turn);
         const turn: st.Turn = t === "listening" || t === "on_turn" || (t === "wake" && (app === "claude-code" || app === "codex" || app === "cursor")) ? t : serviceInstalledFor(app) ? "wake" : "on_turn";
         const dir = chatFolder() || process.cwd();
@@ -502,22 +519,22 @@ let r: Awaited<ReturnType<typeof core.joinCreate>>;
           const app = appArg(a);
           out(restartLine(app));
           const turn: st.Turn = serviceInstalledFor(app) ? "wake" : "on_turn";
-          const r = await core.joinCreate({ kind: "claim", invite, name, job: str(a.job) || "", app, app_name: str(a["app-name"]), turn, session: currentSession().id, cwd: process.cwd(), folder: tildeFolder(process.cwd()), machine: str(a.machine) || machineName() });
+          const r = await core.joinCreate({ kind: "claim", invite, name, job: str(a.job) || "", app, app_name: str(a["app-name"]), turn, session: holderSession(app), cwd: process.cwd(), folder: tildeFolder(process.cwd()), machine: str(a.machine) || machineName() });
           out(r.text);
           out(core.waitSameTurn(`${selfCmd()} claim --wait`));
           return 0;
         }
         const capp = detectApp();
         const cdir = chatFolder() || process.cwd();
-        const cr = await core.claim(name, currentSession().id, str(a.room), capp, { machine: str(a.machine) || machineName(), cwd: cdir, folder: tildeFolder(cdir), turn: serviceInstalledFor(capp) ? "wake" : "on_turn", app_name: str(a["app-name"]) });
+        const cr = await core.claim(name, holderSession(capp), str(a.room), capp, { machine: str(a.machine) || machineName(), cwd: cdir, folder: tildeFolder(cdir), turn: serviceInstalledFor(capp) ? "wake" : "on_turn", app_name: str(a["app-name"]) });
         out(cr.text);
         if (cr.pending && a.wait && cr.requestId) return await waitCmd({ ...a, id: cr.requestId } as Args, "claim");
         return 0;
       }
       case "status": {
-        const sess = currentSession().id;
+        const sess = chatSession(detectApp());
         for (const l of await (await import("./memberend.js")).revive(sess, [process.cwd()], detectApp()).catch(() => [] as string[])) out(l);
-        out(await withWaiting(await statusText(), core.heldBy(sess, who(detectApp())), sess));
+        out(await withWaiting(await statusText(str(a.room)), core.heldBy(sess, who(detectApp())), sess));
         return 0;
       }
       case "leave": {
@@ -528,11 +545,11 @@ let r: Awaited<ReturnType<typeof core.joinCreate>>;
         if (str(a["member-id"])) ms = st.liveMembers().filter((m) => m.id === str(a["member-id"]));
         const same = new Set(ms.map((m) => m.room.name)).size < ms.length;
         if (ms.length !== 1) throw new core.UserError(ms.length ? (same ? `Several members match, in rooms of the same name; say which with --member-id (${ms.map((m) => `${m.id}, joined ${new Date(m.joined_at || 0).toISOString().slice(0, 16)}Z`).join("; ")}).` : `Several members match; add --room (${ms.map((m) => "#" + m.room.name).join(", ")}).`) : "No such member on this computer.");
-        out(await core.leave(ms[0], currentSession().id));
+        out(await core.leave(ms[0], chatSession(detectApp()), { app: detectApp(), session: chatSession(detectApp()), cwd: chatFolder() || process.cwd() }));
         return 0;
       }
       case "listen": {
-        const s = currentSession().id;
+        const s = chatSession(detectApp());
         for (const l of await (await import("./memberend.js")).revive(s, [process.cwd()], detectApp()).catch(() => [] as string[])) out(l);
         let ms = core.heldBy(s, who(detectApp()));
         if (str(a["member-id"])) ms = st.liveMembers().filter((m) => m.id === str(a["member-id"]));
@@ -646,7 +663,7 @@ let r: Awaited<ReturnType<typeof core.joinCreate>>;
       case "wait": {
         // THE SIGNAL (Kickoff 2): blocks until a message waits for this chat, says so and ends. It never reads one.
         // Whatever holds it (the chat's own turn, the app's background commands, a hook) turns its end into a turn.
-        const s = currentSession().id;
+        const s = chatSession(detectApp());
         // --as / --member: only a member this chat may act as (the same rule as inbox: review 2026-11-10, a wait by
         // name could send a test for, and leave a wake marker on, another chat's member)
         const named = str(a.as) || str(a.member);
@@ -779,7 +796,7 @@ let r: Awaited<ReturnType<typeof core.joinCreate>>;
         if (!id || !text) throw new core.UserError(`Usage: ${selfCmd()} reply <message id> --text "<answer>" [--as <name>] [--room <room>]`);
         // --as: the same member send / inbox would pick for that name
         const asM = str(a.as) ? cliMember(a) : null;
-        const r = await core.reply(asM ? sessFor(asM) : currentSession().id, id, text, asM ? asM.room.id : str(a.room), asM ? { ...who(detectApp()), as: asM.name } : who(detectApp()));
+        const r = await core.reply(asM ? sessFor(asM) : chatSession(detectApp()), id, text, asM ? asM.room.id : str(a.room), asM ? { ...who(detectApp()), as: asM.name } : who(detectApp()));
         out(a.json ? JSON.stringify({ id: r.id }) : r.text);
         return 0;
       }
@@ -789,7 +806,7 @@ let r: Awaited<ReturnType<typeof core.joinCreate>>;
         return 0;
       }
       case "inbox": {
-        const sess = currentSession().id;
+        const sess = chatSession(detectApp());
         const app = detectApp();
         for (const l of await (await import("./memberend.js")).revive(sess, [process.cwd()], app).catch(() => [] as string[])) out(l);
         let ms = str(a.as) ? core.pickMembers(sess, str(a.room), str(a.as)!, who(app)) : core.heldBy(sess, who(app));

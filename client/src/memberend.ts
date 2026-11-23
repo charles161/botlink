@@ -45,7 +45,7 @@ const FINAL: Record<string, number[]> = { gone: [410], room_gone: [410], unknown
 /** Every code bot-link's server sends on a member's calls (above): an unknown one is not taken as the server's word. */
 const KNOWN = new Set([...Object.keys(FINAL), "bad_signature", "stale_timestamp", "replayed", "not_member", "forbidden", "own_member", "claim_needs_approval",
   "not_found", "bad_request", "superseded", "recipients_changed", "storage_full", "server_full", "plan_limit", "holder_changed", "id_conflict", "key_in_use",
-  "name_taken", "room_full", "rate_limited", "too_many_polls", "mailbox_full", "quota_exceeded", "too_large", "no_recipients", "invite_invalid",
+  "name_taken", "join_pending", "already_member", "room_full", "rate_limited", "too_many_polls", "mailbox_full", "quota_exceeded", "too_large", "no_recipients", "invite_invalid",
   "member_not_found", "sends_refused", "too_many_subscriptions"]);
 
 /** bot-link's server itself said this member is gone, or not this chat's. */

@@ -15,7 +15,7 @@
 import { selfCmd } from "./version.js";
 import { appRun, mcpToolsLoaded, argsOf, commOf, parentOf } from "./session.js";
 
-const APPS: Record<string, string> = { "claude-code": "Claude Code", codex: "Codex", cursor: "Cursor", opencode: "OpenCode", t3: "T3 Code" };
+const APPS: Record<string, string> = { "claude-code": "Claude Code", codex: "Codex", cursor: "Cursor", opencode: "OpenCode", t3: "T3 Code", antigravity: "Antigravity" };
 
 /** Seconds a wake test is held back after it is asked for, so the chat can go idle first (the server takes 0..120). */
 export const TEST_DELAY_S = Math.max(0, Math.min(120, Number(process.env.BOTLINK_TEST_DELAY_S || 10)));
@@ -23,7 +23,7 @@ export const TEST_DELAY_S = Math.max(0, Math.min(120, Number(process.env.BOTLINK
 /** Seconds the second wake test is held back after the chat starts listening again: long enough for its turn to end. */
 export const CONFIRM_DELAY_S = Math.max(0, Math.min(120, Number(process.env.BOTLINK_CONFIRM_DELAY_S || 45)));
 
-/** A long command prefix (`npx -y <url>`) is written out once and as `…` after that: the block is read by a model in
+/** A long command prefix (`npx -y --allow-remote=all <url>`) is written out once and as `…` after that: the block is read by a model in
  *  one go, and a dozen copies of a URL bury the rules. */
 function prefix(): { full: string; b: string; note: string } {
   const full = selfCmd();
@@ -88,6 +88,8 @@ export function envFacts(m: { app: string; app_name?: string | null; holder_sess
   if (m.holder_session) facts.push(`this chat's id: ${m.holder_session} (a listener command gets it as $BOTLINK_LISTEN_SESSION)`);
   // T3 Code: the chat is a T3 thread, and T3's own command line gives a thread a turn from outside it
   if (m.app === "t3") facts.push(`this chat is a T3 Code thread, and T3's own command gives a thread its next turn from outside: \`t3 thread send <thread id> "<text>"\` (a busy thread gets it after its current turn)`);
+  // Antigravity: CLI sessions carry ANTIGRAVITY_CONVERSATION_ID and can be resumed when closed via `agy --conversation <id> -p "<prompt>"`
+  if (m.app === "antigravity") facts.push(`this chat runs in Antigravity (its conversation id is in $ANTIGRAVITY_CONVERSATION_ID; a closed CLI session can be resumed with \`agy --conversation <id> -p "<prompt>"\`, or use background \`botlink wait\` in an interactive session)`);
   // the program this chat runs in: whose --help to read
   const prog = appProcess();
   if (prog) facts.push(`the program this chat runs in: \`${prog.name}\` (its own \`--help\` says what it can do)`);

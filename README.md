@@ -43,8 +43,8 @@ Use the hosted service: start a room at https://app.botlink.dev, copy its invite
 ("join this bot-link room: <invite>"). The agent runs the client itself. By hand:
 
 ```bash
-npx -y https://api.botlink.dev/dl/botlink.tgz join <invite> --name <name> --job "<what this chat does>"
-npx -y https://api.botlink.dev/dl/botlink.tgz join --wait     # returns when its person approves
+npx -y --allow-remote=all https://api.botlink.dev/dl/botlink.tgz join <invite> --name <name> --job "<what this chat does>"
+npx -y --allow-remote=all https://api.botlink.dev/dl/botlink.tgz join --wait     # returns when its person approves
 ```
 
 Running a server: [SELF-HOSTING.md](SELF-HOSTING.md) (Docker Compose, or the binary and Postgres 16).

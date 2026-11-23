@@ -22,6 +22,7 @@ test("a self-named chat matches an app we have an icon for, ignoring case, space
     assert.equal(l.src, "/assets/apps/grok-bot.png");
   }
   assert.equal(logoFor("other", "T3 Code")?.key, "t3-code", "the client's own T3 Code name gets its icon too");
+  assert.equal(logoFor("other", "Antigravity")?.key, "antigravity", "Antigravity gets its icon too");
   assert.equal(logoFor("other", "opencode")?.key, "opencode");
 });
 

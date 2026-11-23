@@ -107,7 +107,19 @@ export function originFromSpec(spec: string | null): string | null {
   return m ? m[1] : null;
 }
 
-/** Production download of this client (deploy/NEEDS.md): `npx -y <url> …`. bot-link is NOT on the npm registry. */
+/**
+ * The words that run a client spec with npx: every command bot-link prints that runs a spec goes through here
+ * (test/npxprefix.test.ts fails on any other way of writing `npx -y --allow-remote=all <url>`). npm 12 refuses a tarball URL unless the
+ * command allows it (`allow-remote` defaults to "none", EALLOWREMOTE); npm 8 to 11 accept the setting and change
+ * nothing (scripts/npm-matrix.mjs, 21 Nov 2026). It must stand before the spec: npx hands everything after the spec to
+ * the client. A file or a registry name needs nothing (`allow-file` stays "all").
+ */
+export const NPX_URL_FLAG = "--allow-remote=all";
+export function npxRun(spec: string): string {
+  return /^https?:\/\//.test(spec) ? `npx -y ${NPX_URL_FLAG} ${spec}` : `npx -y ${spec}`;
+}
+
+/** Production download of this client (deploy/NEEDS.md): `npxRun(<url>) …`. bot-link is NOT on the npm registry. */
 export const DEFAULT_CLIENT_URL = "https://api.botlink.dev/dl/botlink.tgz";
 
 /** Where this client is downloaded from: BOTLINK_CLIENT_URL, the tarball URL this copy came from, else production, but
@@ -125,12 +137,49 @@ export function clientUrl(): string | null {
 }
 
 /** A shell word as typed (a path with spaces or quotes gets single quotes). */
-const shellWord = (s: string) => (/^[\w@%+=:,./-]+$/.test(s) ? s : `'${s.replace(/'/g, "'\\''")}'`);
+export const shellWord = (s: string) => (/^[\w@%+=:,./-]+$/.test(s) ? s : `'${s.replace(/'/g, "'\\''")}'`);
+
+/** The client the server hands out now, as its last answer named it (stale.ts; update.json server_client). */
+export interface ServerClient {
+  origin: string;
+  version: string;
+  /** its versioned download (/dl/botlink-<16 hex>.tgz), only when it is one of bot-link's hosts */
+  url: string | null;
+  release: number | null;
+}
+let serverClientNow: ServerClient | null = null;
+export function setServerClient(sc: ServerClient | null) {
+  serverClientNow = sc;
+}
+function knownServerClient(): ServerClient | null {
+  if (serverClientNow) return serverClientNow;
+  try {
+    const sc = JSON.parse(readFileSync(join(homeDir(), "client", "update.json"), "utf-8")).server_client;
+    return sc && typeof sc.version === "string" && typeof sc.origin === "string" ? sc : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The versioned download of THIS release, when this copy came from the unversioned `<origin>/dl/botlink.tgz` and that
+ * server hands out this very version: npx caches by spec, so `npx -y --allow-remote=all <origin>/dl/botlink.tgz` on a computer that ran it
+ * before runs whatever it fetched first, while the versioned URL names one release (incident 21 Nov 2026). Every
+ * client release has its own version (scripts/release-version.mjs), so the same version is the same release.
+ */
+function versionedSelf(spec: string): string | null {
+  const origin = originFromSpec(spec);
+  if (!origin || /\/dl\/botlink-[0-9a-f]{16}\.tgz/.test(spec)) return null;
+  const sc = knownServerClient();
+  if (!sc?.url || sc.version !== VERSION || originFromSpec(sc.url) !== origin || !hostAllowed(sc.url).ok) return null;
+  return sc.url;
+}
 
 /**
  * What a person or a chat types to run this client again. NEVER a bare `npx botlink`: that name isn't ours on npm
  * (E404 today, and whoever registers it would run code on every machine that follows our instructions).
- *   - run from a tarball URL with npx: the same `npx -y <url>`
+ *   - run from a tarball URL with npx: the same `npxRun(<url>)`; from the unversioned /dl/botlink.tgz, the versioned URL of
+ *     this same release once its server named it (versionedSelf)
  *   - run from a tarball file with npx: `npx -y file:<absolute path>` (a bare absolute path is taken for a program)
  *   - a global install of our tarball (`botlink` on PATH): `botlink`
  *   - an install under ~/.botlink/client (self-update, SPEC §7.6): `node ~/.botlink/client/current/dist/cli.js`
@@ -152,20 +201,20 @@ export function selfCmd(): string {
   if (root.startsWith(rcd + sep)) return `node ${join(cd, "current", "dist", "cli.js")}`;
   const spec = installSpec();
   // run by `npx @botlink/cli`: that package exists (this copy came from it), pinned so npx can't reuse another copy
-  if (spec && !/^https?:\/\//.test(spec) && /[\\/]node_modules[\\/]@botlink[\\/]cli$/.test(PKG_ROOT)) return `npx -y ${NPM_NAME}@${VERSION}`;
-  if (spec && /^https?:\/\//.test(spec)) return `npx -y ${spec}`;
+  if (spec && !/^https?:\/\//.test(spec) && /[\\/]node_modules[\\/]@botlink[\\/]cli$/.test(PKG_ROOT)) return npxRun(`${NPM_NAME}@${VERSION}`);
+  if (spec && /^https?:\/\//.test(spec)) return npxRun(versionedSelf(spec) || spec);
   // a tarball on this computer: the person ran that file (not an address from someone else), so it is named as it is
   const file = fileOfSpec(spec);
-  if (file && isAbsolute(file) && existsSync(file)) return `npx -y ${shellWord(`file:${file}`)}`;
+  if (file && isAbsolute(file) && existsSync(file)) return npxRun(shellWord(`file:${file}`));
   if (spec) {
     const url = clientUrl();
-    return url ? `npx -y ${url}` : RUN_AGAIN;
+    return url ? npxRun(url) : RUN_AGAIN;
   }
   const argv1 = process.argv[1] || "";
   if (/[\\/]botlink$/.test(argv1) && !/[\\/]_npx[\\/]/.test(argv1)) return "botlink";
   if (process.env.BOTLINK_CLIENT_URL) {
     const url = clientUrl();
-    return url ? `npx -y ${url}` : RUN_AGAIN;
+    return url ? npxRun(url) : RUN_AGAIN;
   }
   return `node ${join(PKG_ROOT, "dist", "cli.js")}`;
 }

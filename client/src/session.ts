@@ -152,7 +152,7 @@ export function linkedSession(): SessionLink | null {
 }
 
 /** The app's own session env (what it gives its shell commands / MCP servers). */
-const APP_ENV_KEYS = ["T3CODE_THREAD_ID", "CLAUDE_CODE_SESSION_ID", "CLAUDE_SESSION_ID", "CODEX_THREAD_ID", "CODEX_SESSION_ID", "OPENCODE_SESSION_ID"];
+const APP_ENV_KEYS = ["T3CODE_THREAD_ID", "CLAUDE_CODE_SESSION_ID", "CLAUDE_SESSION_ID", "CODEX_THREAD_ID", "CODEX_SESSION_ID", "OPENCODE_SESSION_ID", "ANTIGRAVITY_CONVERSATION_ID"];
 
 function envSession(keys: string[]): string | null {
   for (const k of keys) {
@@ -163,6 +163,34 @@ function envSession(keys: string[]): string | null {
 }
 export function sessionFromEnv(): string | null {
   return envSession(["BOTLINK_SESSION", ...APP_ENV_KEYS]);
+}
+
+/**
+ * THE session id that is the calling chat, for every command: join, join --wait, create-room, claim, status, roster,
+ * send, inbox, wait, … (founder bug 21 Nov 2026: join dropped an OpenCode chat's --session while every later command
+ * used it, so the chat's request and member were found under one identity and its later calls looked under another,
+ * where they found its member of another room and nothing for this one). One answer per app:
+ * - OpenCode: none. It is found by app and folder. Its tools get no session id and a model passes --session on some
+ *   calls and not others (docs/agents.md asks for it, to wake the chat), so a member held by a session would lock out
+ *   every call without it (why e304f5e left the session out of its join; now no command uses it). Its --session still
+ *   names the session to wake (`listen --via opencode`): a wake target, not this chat's identity.
+ * - An app bot-link doesn't detect: the session it is given (--session, BOTLINK_SESSION: a person's terminal, a
+ *   listener, a script), for join as for every other command; none given, it is found by its folder.
+ * - Cursor: the id names the Cursor chat (H2). It never holds a member (Cursor's MCP server has no chat id); join
+ *   records it as the request's Cursor chat (cursorChatOf), the same id the other commands match members with.
+ * - Every other app: its session id (explicit, hook, the app's env).
+ * cli.ts and mcp.ts never read a session any other way (client/test/rejoinpending.test.ts checks it).
+ */
+export function chatSession(app: string, given: string | null = currentSession().id): string | null {
+  return app === "opencode" ? null : given;
+}
+/** What a join, create-room or move records as its session: chatSession, except a Cursor chat's id (cursorChatOf). */
+export function holderSession(app: string, given: string | null = currentSession().id): string | null {
+  return app === "cursor" ? null : chatSession(app, given);
+}
+/** The Cursor chat a Cursor request is made from: the id the chat passed, else its shell's CURSOR_CONVERSATION_ID. */
+export function cursorChatOf(app: string, given: string | null = currentSession().id): string | null {
+  return app === "cursor" ? given || cursorChatFromEnv() : null;
 }
 
 export type SessionSource = "explicit" | "env:BOTLINK_SESSION" | "hook" | "app-link" | "app-env" | "none";
@@ -219,35 +247,37 @@ function appProcessFolder(): string | null {
  * OPENCODE_CONFIG are user settings, not signals. OpenCode plus another app's env: detectApp checks OPENCODE_PID's
  * ancestry; between the other three the order above wins (unchanged from 1e337df).
  */
-export function appsFromEnv(env: NodeJS.ProcessEnv = process.env): ("claude-code" | "codex" | "cursor" | "opencode")[] {
+export function appsFromEnv(env: NodeJS.ProcessEnv = process.env): ("claude-code" | "codex" | "cursor" | "opencode" | "antigravity")[] {
   const has = (k: string) => !!(env[k] || "").trim();
-  const out: ("claude-code" | "codex" | "cursor" | "opencode")[] = [];
+  const out: ("claude-code" | "codex" | "cursor" | "opencode" | "antigravity")[] = [];
   if (has("CURSOR_CONVERSATION_ID") || has("CURSOR_AGENT")) out.push("cursor");
   // only what Claude Code sets for its own commands (CLAUDE_CODE_USE_BEDROCK / _EFFORT_LEVEL etc. are user settings)
   if (env.CLAUDECODE === "1" || has("CLAUDE_CODE_ENTRYPOINT") || has("CLAUDE_CODE_SESSION_ID")) out.push("claude-code");
   if (Object.keys(env).some((k) => /^CODEX_(THREAD_ID|SESSION_ID|SANDBOX)/.test(k) && has(k))) out.push("codex");
+  if (has("ANTIGRAVITY_CONVERSATION_ID") || has("ANTIGRAVITY_AGENT") || has("ANTIGRAVITY_TRAJECTORY_ID") || has("ANTIGRAVITY_APP_DATA_DIR") || has("ANTIGRAVITY_LS_VERSION")) out.push("antigravity");
   if (env.OPENCODE === "1" || /^\d+$/.test((env.OPENCODE_PID || "").trim())) out.push("opencode");
   return out;
 }
-/** The env's app when the env alone decides: one signal, or several without OpenCode (cursor > claude-code > codex). */
-export function appFromEnv(env: NodeJS.ProcessEnv = process.env): "claude-code" | "codex" | "cursor" | "opencode" | null {
+/** The env's app when the env alone decides: one signal, or several without OpenCode (cursor > claude-code > codex > antigravity). */
+export function appFromEnv(env: NodeJS.ProcessEnv = process.env): "claude-code" | "codex" | "cursor" | "opencode" | "antigravity" | null {
   const es = appsFromEnv(env);
   return (es.length > 1 && es.includes("opencode") ? es.filter((a) => a !== "opencode")[0] : es[0]) ?? null;
 }
 
 /** The app an ancestor process name belongs to (null: not one we know). */
-export function appOfComm(comm: string): "claude-code" | "codex" | "cursor" | "opencode" | null {
+export function appOfComm(comm: string): "claude-code" | "codex" | "cursor" | "opencode" | "antigravity" | null {
   const c = comm.toLowerCase();
   if (c.includes("opencode")) return "opencode";
   if (c === "claude" || c.startsWith("claude")) return "claude-code";
   if (c.startsWith("codex")) return "codex";
   if (c.includes("cursor")) return "cursor";
+  if (c === "agy" || c.startsWith("antigravity")) return "antigravity";
   return null;
 }
 
-const DETECTED = ["claude-code", "codex", "cursor", "opencode", "t3", "other"] as const;
+const DETECTED = ["claude-code", "codex", "cursor", "opencode", "t3", "antigravity", "other"] as const;
 /** Which app is running us: BOTLINK_APP, the env the app gives its commands, a session link, or the ancestor process names. */
-export function detectApp(): "claude-code" | "codex" | "cursor" | "opencode" | "t3" | "other" {
+export function detectApp(): "claude-code" | "codex" | "cursor" | "opencode" | "t3" | "antigravity" | "other" {
   const env = (process.env.BOTLINK_APP || "").trim();
   if ((DETECTED as readonly string[]).includes(env)) return env as any;
   // T3 Code runs Claude Code / Codex / other providers as its threads and gives their commands T3CODE_THREAD_ID
@@ -331,8 +361,14 @@ export function t3ThreadFromEnv(): string | null {
   return v && SESSION_RE.test(v) ? v : null;
 }
 
+/** Antigravity CLI (`agy`) gives its shell commands ANTIGRAVITY_CONVERSATION_ID. */
+export function antigravityConvFromEnv(): string | null {
+  const v = (process.env.ANTIGRAVITY_CONVERSATION_ID || "").trim();
+  return v && SESSION_RE.test(v) ? v : null;
+}
+
 /**
- * Is this command running inside a HEADLESS app run (`claude -p`, `codex exec`, `cursor-agent -p`)? Such a run either
+ * Is this command running inside a HEADLESS app run (`claude -p`, `codex exec`, `cursor-agent -p`, `agy -p`)? Such a run either
  * waits for its background tasks before it ends or kills them when it ends, so a background `listen --once` hangs the
  * run or dies with it (r3 full eval 2026-11-06: a `claude -p` chat re-armed it every turn and each turn hung 15 min).
  * Returns what was found ("claude -p"), or null (an interactive window, or unknown).
@@ -342,7 +378,7 @@ export function headlessRun(): string | null {
 }
 
 /** The app run this command is in: the nearest app ancestor and whether it runs headless (null headless: a window). */
-export function appRun(): { app: "claude-code" | "codex" | "cursor" | "opencode"; headless: string | null } | null {
+export function appRun(): { app: "claude-code" | "codex" | "cursor" | "opencode" | "antigravity"; headless: string | null } | null {
   let pid = process.ppid;
   for (let i = 0; i < 12 && pid > 1; i++) {
     const args = argsOf(pid);
@@ -350,6 +386,7 @@ export function appRun(): { app: "claude-code" | "codex" | "cursor" | "opencode"
     if (app === "claude-code" && /(^|\s)(-p|--print)(\s|$)/.test(args)) return { app, headless: "claude -p" };
     if (app === "codex" && /(^|\s)exec(\s|$)/.test(args)) return { app, headless: "codex exec" };
     if (app === "cursor" && /(^|\s)(-p|--print)(\s|$)/.test(args)) return { app, headless: "cursor-agent -p" };
+    if (app === "antigravity" && /(^|\s)(-p|--print|--prompt)(\s|$)/.test(args)) return { app, headless: "agy -p" };
     if (app) return { app, headless: null }; // the app process itself, interactive
     pid = parentOf(pid);
   }

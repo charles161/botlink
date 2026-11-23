@@ -22,6 +22,8 @@ type Checked struct {
 	HC   *humancheck.Checker
 	GW   billing.Gateway
 	Gate *clientgate.Gate
+	// JoinGate refuses joins, room drafts and moves from outdated clients (clientgate/joingate.go)
+	JoinGate *clientgate.JoinGate
 }
 
 // Preflight runs every start-time refusal that needs neither the database nor the network, in one place: the config
@@ -51,7 +53,11 @@ func Preflight(cfg *config.Config) (*Checked, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Checked{HC: hc, GW: gw, Gate: gate}, nil
+	jg, err := clientgate.NewJoinGate(cfg.MinJoinClientVersion, cfg.Env == "dev", cfg.ClientTGZ)
+	if err != nil {
+		return nil, err
+	}
+	return &Checked{HC: hc, GW: gw, Gate: gate, JoinGate: jg}, nil
 }
 
 // CheckConfig is `botlink check-config`: the configuration from the environment, checked as a starting server checks

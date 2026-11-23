@@ -126,12 +126,12 @@ func TestClientDownload(t *testing.T) {
 		b, _ := io.ReadAll(res.Body)
 		res.Body.Close()
 		page := string(b)
-		if res.StatusCode != 200 || !strings.Contains(page, "npx -y https://api.localhost/dl/botlink.tgz join ") {
+		if res.StatusCode != 200 || !strings.Contains(page, "npx -y --allow-remote=all https://api.localhost/dl/botlink.tgz join ") {
 			t.Fatalf("%s invite page lacks the distribution URL: %d %s", accept, res.StatusCode, page)
 		}
 		// the 2026-11-10 test run (SPEC §6.14): the invite page tells agents to set up listening right after joining, their own way:
 		// the one signal (wait) with the client's address, and no command picked per app
-		if accept == "text/markdown" && (!strings.Contains(page, "Set up listening right after you join") || !strings.Contains(page, "stands for `npx -y https://api.localhost/dl/botlink.tgz`") || !strings.Contains(page, "`... wait`") || strings.Contains(page, "codex-queue") || strings.Contains(page, "%!")) {
+		if accept == "text/markdown" && (!strings.Contains(page, "Set up listening right after you join") || !strings.Contains(page, "stands for `npx -y --allow-remote=all https://api.localhost/dl/botlink.tgz`") || !strings.Contains(page, "`... wait`") || strings.Contains(page, "codex-queue") || strings.Contains(page, "%!")) {
 			t.Fatalf("%s invite page lacks the listening steps: %s", accept, page)
 		}
 		bare := strings.ReplaceAll(page, "never run a bare `npx botlink`", "")
@@ -300,14 +300,14 @@ func TestClientVersionedDownload(t *testing.T) {
 	for _, accept := range []string{"text/markdown", "text/html"} {
 		res, b := get("/i/"+code, map[string]string{"Accept": accept})
 		page := string(b)
-		if res.StatusCode != 200 || !strings.Contains(page, "npx -y "+want+" join ") || strings.Contains(page, "/dl/botlink.tgz") {
+		if res.StatusCode != 200 || !strings.Contains(page, "npx -y --allow-remote=all "+want+" join ") || strings.Contains(page, "/dl/botlink.tgz") {
 			t.Fatalf("%s invite page lacks the versioned URL: %d %s", accept, res.StatusCode, page)
 		}
 	}
 	for _, doc := range []string{"/agents.md", "/llms.txt"} {
 		res, b := get(doc, nil)
-		if res.StatusCode != 200 || !strings.Contains(string(b), want) || strings.Contains(string(b), "/dl/botlink.tgz") {
-			t.Fatalf("%s lacks the versioned URL: %d", doc, res.StatusCode)
+		if res.StatusCode != 200 || !strings.Contains(string(b), "npx -y --allow-remote=all "+want) || strings.Contains(string(b), "/dl/botlink.tgz") {
+			t.Fatalf("%s lacks the command with the versioned URL (npm 12 needs --allow-remote=all before it): %d", doc, res.StatusCode)
 		}
 	}
 
@@ -318,7 +318,7 @@ func TestClientVersionedDownload(t *testing.T) {
 	}
 	want2 := "https://api.localhost/dl/botlink-" + v2 + ".tgz"
 	res, b := get("/i/"+code, map[string]string{"Accept": "text/markdown"})
-	if res.StatusCode != 200 || !strings.Contains(string(b), "npx -y "+want2+" join ") {
+	if res.StatusCode != 200 || !strings.Contains(string(b), "npx -y --allow-remote=all "+want2+" join ") {
 		t.Fatalf("after swap the invite page names %s: %s", want2, b)
 	}
 	if res, b := get("/agents.md", nil); res.StatusCode != 200 || !strings.Contains(string(b), want2) {
@@ -345,7 +345,7 @@ func TestClientVersionedDownload(t *testing.T) {
 	if res, _ := get("/dl/botlink-"+v2+".tgz", nil); res.StatusCode != 404 {
 		t.Fatalf("missing file, versioned: %d", res.StatusCode)
 	}
-	if res, b := get("/i/"+code, map[string]string{"Accept": "text/markdown"}); res.StatusCode != 200 || !strings.Contains(string(b), "npx -y https://api.localhost/dl/botlink.tgz join ") {
+	if res, b := get("/i/"+code, map[string]string{"Accept": "text/markdown"}); res.StatusCode != 200 || !strings.Contains(string(b), "npx -y --allow-remote=all https://api.localhost/dl/botlink.tgz join ") {
 		t.Fatalf("no tarball: invite page should name the configured URL: %s", b)
 	}
 }

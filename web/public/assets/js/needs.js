@@ -10,6 +10,8 @@ import { app, refreshNeeds } from "./app.js";
 import { twinsOf, twinsLine } from "./notify.js";
 import { batchGroups } from "./needs-batch.js";
 import { eventUrlCard } from "./needs-eventurl.js";
+import { joinTries } from "./tries.js";
+import { triesParts } from "./needs-tries.js";
 
 /** Big match code, one box per character (read aloud easily, compared at a glance). */
 export function matchCode(code, { size = "lg" } = {}) {
@@ -62,8 +64,8 @@ export async function otherBrowserLabel() {
 }
 
 function actions(...btns) { return h("div", { class: "need-actions" }, btns); }
-function busyBtn(btn, on) { btn.disabled = on; btn.classList.toggle("busy", on); }
-const btn = (label, cls, onClick, ic) => {
+export function busyBtn(btn, on) { btn.disabled = on; btn.classList.toggle("busy", on); }
+export const btn = (label, cls, onClick, ic) => {
   const b = h("button", { type: "button", class: ["btn", cls] }, h("span", { class: "spinner", "aria-hidden": "true" }), ic ? icon(ic, { size: 18 }) : null, h("span", { class: "btn-label" }, label));
   b.addEventListener("click", () => onClick(b));
   return b;
@@ -93,8 +95,11 @@ export function requestFacts(card, { compact = false } = {}) {
     compact ? null : row("Job", card.job ? h("q", null, card.job) : null, "rq-job"));
 }
 
-/** batch: the room's tick box maker when several of its chats wait (needs-batch.js); a move never gets one. */
-export function joinCard(card, { showRoom = false, onDone, batch = null } = {}) {
+/**
+ * batch: the room's tick box maker when several of its chats wait (needs-batch.js); a move never gets one.
+ * tries: needs-tries.js triesParts when card is the newest of several tries from one place; the card stays card's own.
+ */
+export function joinCard(card, { showRoom = false, onDone, batch = null, tries = null } = {}) {
   const isMove = card.kind === "claim";
   const toChat = isMove && card.move_to === "chat"; // H1: another chat on the same computer
   const fpSlot = h("code", { class: "fp" }, "computing…");
@@ -102,22 +107,23 @@ export function joinCard(card, { showRoom = false, onDone, batch = null } = {}) 
   const blocker = h("p", { class: "need-blocker", hidden: true });
   const expires = until(card.expires_at);
   const approve = btn(isMove ? "Approve the move" : "Approve", "btn-primary", () => approveJoin(card, onDone));
-  const reject = btn("Reject", "btn-ghost", async (b) => {
+  const reject = tries ? btn("Reject all", "btn-ghost", tries.rejectAll) : btn("Reject", "btn-ghost", async (b) => {
     busyBtn(b, true);
     try { await post(`/app/v1/join-requests/${card.id}/reject`); toast(`${card.name} won't ${isMove ? "move" : "come in"}.`); await refreshNeeds(); onDone?.(); }
     catch (e) { toast(errorText(e, { name: card.name }), "error"); busyBtn(b, false); if (e.code === "already_decided") { await refreshNeeds(); onDone?.(); } }
   });
   const blockReady = signBlocker(card.room_id).then((why) => { if (why) { blocker.textContent = why; blocker.hidden = false; approve.disabled = true; } return why; });
   const tick = batch && !isMove ? batch.tickRow(card, { fpReady, blockReady }) : null;
-  const twins = twinsLine(card.room_name, [card, ...twinsOf(card)].map((c) => c.name), { batch: !!tick }); // two requests are never one
-  return h("article", { class: ["need", isMove ? "need-move" : "need-join"], "data-need": "join", "data-request": card.id, "aria-labelledby": `jr-${card.id}` },
+  const twins = tries ? tries.line : twinsLine(card.room_name, [card, ...twinsOf(card)].map((c) => c.name), { batch: !!tick }); // two requests are never one
+  return h("article", { class: ["need", isMove ? "need-move" : "need-join", tries && "need-tries", tries?.again && "need-again"], "data-need": "join", "data-request": card.id, "aria-labelledby": `jr-${card.id}`,
+    "data-tries": tries?.count, "data-need-key": tries && `tries|${tries.key}` },
     h("header", { class: "need-head" },
       h("span", { class: "need-kind" }, toChat ? "Moving chats" : isMove ? "Moving machines" : "Join request", showRoom ? h("span", { class: "need-room" }, `#${card.room_name}`) : null),
       h("span", { class: "need-time" }, ago(card.created_at), expires ? ` · ${expires} left` : " · expired")),
     h("div", { class: "need-main" },
       appAvatar(card.app, card.app_name, { size: 52, label: appName(card.app, card.app_name) }),
       h("div", null,
-        h("h3", { class: "need-title", id: `jr-${card.id}` }, toChat ? `${card.name} wants to move to a new chat` : isMove ? `${card.name} wants to move to a new machine` : `${card.name} would like to come in`),
+        h("h3", { class: "need-title", id: `jr-${card.id}` }, tries ? tries.title : toChat ? `${card.name} wants to move to a new chat` : isMove ? `${card.name} wants to move to a new machine` : `${card.name} would like to come in`),
         h("p", { class: "need-meta" }, toChat ? "Another chat on this computer wants to continue as it. Approve only if you asked for this; the chat it leaves stops being it." : isMove ? "Is this your chat? Check where it runs." : h("span", null, h("b", null, "This becomes YOUR chat."), " Running on someone else's computer? Reject.")))),
     twins ? h("p", { class: "need-twins" }, icon("alert", { size: 18 }), h("span", null, twins)) : null,
     requestFacts(card),
@@ -131,10 +137,11 @@ export function joinCard(card, { showRoom = false, onDone, batch = null } = {}) 
     tick,
     h("p", { class: "need-hint" }, icon("check", { size: 16 }), `Approve only if ${card.name} shows the same code.`),
     blocker,
+    tries ? tries.older(blockReady) : null,
     actions(approve, reject));
 }
 
-async function approveJoin(card, onDone) {
+export async function approveJoin(card, onDone) {
   const isMove = card.kind === "claim";
   const fp = card._fp || await memberFingerprint(card.ed25519_pk, card.x25519_pk);
   const ok = await humanCheck({
@@ -321,18 +328,21 @@ export async function approveDevice(deviceId, label, onDone) {
 }
 
 /**
- * The whole list, filtered (roomId) or all. With `ticks` (batch.js createTicks, one per page), a room with two or more
- * waiting join requests shows them together in one group with tick boxes and one approve bar (needs-batch.js).
+ * The whole list, filtered (roomId) or all. Join requests of one room from the same place are one card (tries.js,
+ * needs-tries.js). With `ticks` (batch.js createTicks, one per page), a room with two or more waiting chats (a card of
+ * tries counts as one, by its newest) shows them together in one group with tick boxes and one approve bar (needs-batch.js).
  */
 export function needsList(needs, { roomId = null, showRoom = false, onDone, ticks = null } = {}) {
   if (!needs) return [];
   const inRoom = (x) => !roomId || x.room_id === roomId;
   const joins = needs.join_requests.filter(inRoom);
-  const groups = ticks ? batchGroups(joins, ticks, { onDone }) : new Map();
+  const units = joinTries(joins);
+  const groups = ticks ? batchGroups(units.map((u) => u.newest), ticks, { onDone, all: joins }) : new Map();
   const joinEls = [];
-  for (const c of joins) {
+  for (const u of units) {
+    const c = u.newest;
     const g = c.kind === "join" ? groups.get(c.room_id) : null;
-    const el = joinCard(c, { showRoom, onDone, batch: g?.forCard });
+    const el = joinCard(c, { showRoom, onDone, batch: g?.forCard, tries: u.older.length ? triesParts(u, { onDone }) : null });
     if (!g) { joinEls.push(el); continue; }
     if (!joinEls.includes(g.el)) joinEls.push(g.el);
     g.add(el);

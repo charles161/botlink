@@ -10,6 +10,8 @@ import * as c from "../src/crypto.js";
 import { verifyRequest } from "../src/reqsign.js";
 import { makeEntry, verifyRoster, entryHash, type SignedEntry, type RosterState } from "../src/roster.js";
 import { FakeEvents } from "./fake-events.js";
+import { cmpVersion } from "../src/stale.js";
+import { npxRun } from "../src/version.js";
 
 type Turn = "always_on" | "wake" | "listening" | "on_turn";
 
@@ -153,6 +155,12 @@ export class FakeServer {
   fault: { path: RegExp; kind: "502" | "503" | "403" | "410" | "stall" | "garbage"; times: number } | null = null;
   /**: ack requests hang (never applied, never answered) while true: a hook process the app ends mid-ack */
   holdAcks = false;
+  /** the client the server hands out (incident 21 Nov 2026): named on every answer; a join, room draft or move from a
+   *  copy that asks (X-Botlink-Client-Stale: refuse) and is older is refused 409 client_outdated, as the real server's
+   *  clientgate/joingate.go */
+  client: { version: string; url: string; release?: number } | null = null;
+  /** the X-Botlink-Client-* headers each request carried */
+  clientHeaders: { path: string; version?: string; stale?: string; release?: string }[] = [];
   /** runs once right before the next send is processed (e.g. a member joins in between) */
   beforeSend: (() => void) | null = null;
   server!: Server;
@@ -430,7 +438,18 @@ export class FakeServer {
     const session = (req.headers["x-botlink-session"] as string) || null;
     this.access.push({ path: url.pathname, id: req.headers["cf-access-client-id"] as string | undefined, secret: req.headers["cf-access-client-secret"] as string | undefined });
     let status = 200;
+    const hv = (n: string) => req.headers[n] as string | undefined;
+    this.clientHeaders.push({ path: url.pathname, version: hv("x-botlink-client-version"), stale: hv("x-botlink-client-stale"), release: hv("x-botlink-client-release") });
+    if (this.client) {
+      res.setHeader("X-Botlink-Client-Current", this.client.version);
+      res.setHeader("X-Botlink-Client-Url", this.client.url);
+      if (this.client.release) res.setHeader("X-Botlink-Client-Current-Release", String(this.client.release));
+    }
     try {
+      if (this.client && req.method === "POST" && /^\/api\/v1\/(join-requests|room-drafts|me\/claim)$/.test(url.pathname) && hv("x-botlink-client-stale") === "refuse" &&
+        cmpVersion(hv("x-botlink-client-version") || "", this.client.version) === -1) {
+        throw new HttpErr(409, "client_outdated", `This bot-link client (${hv("x-botlink-client-version")}) is out of date. Run exactly: ${npxRun(this.client.url)} <the same command and arguments>. Do not retry the old command: it runs the old copy again.`, { reason: "behind_current", current_version: this.client.version, url: this.client.url });
+      }
       if (this.holdAcks && url.pathname === "/api/v1/me/inbox/ack") {
         await new Promise<void>((r) => res.on("close", () => r()));
         return;
@@ -639,8 +658,20 @@ export class FakeServer {
         if (!m) throw new HttpErr(404, "member_not_found");
         memberId = m.id;
       } else {
-        const taken = [...this.members.values()].some((x) => x.room === room.id && !x.removed && x.name === b.name) || this.pending().some((x) => x.room === room.id && x.body.name === b.name);
-        if (taken) throw new HttpErr(409, "name_taken", "taken", { suggestion: `${b.name}-2` });
+        const live = (x: JoinReq) => x.expires > now();
+        if ([...this.members.values()].some((x) => x.room === room.id && !x.removed && x.name === b.name)) throw new HttpErr(409, "name_taken", "taken", { suggestion: `${b.name}-2` });
+        // as the real server (agentapi/join.go pendingNameTaken): only a waiting request holds the name
+        const waits = this.pending().find((x) => x.room === room.id && x.kind === "join" && x.body.name === b.name && live(x));
+        if (waits) throw new HttpErr(409, "name_taken", "A chat's request to join under that name is waiting for approval in this room.", { suggestion: `${b.name}-2`, pending: true, same_machine: !!b.machine && waits.body.machine === b.machine });
+        // one chat, one identity per room (agentapi/join.go oneWaitingJoin): the same unsigned words of a chat
+        const sess = b.session_id || "", an = b.app_name || "";
+        if (b.machine && b.folder && !(b.app === "cursor" && !sess)) {
+          const same = (x: { machine?: string; folder?: string; app: string; app_name?: string | null }) => x.machine === b.machine && x.folder === b.folder && x.app === b.app && (x.app_name || "") === an;
+          const m = [...this.members.values()].find((x) => x.room === room.id && !x.removed && x.account === inv.account && same(x) && (x.holder_session || "") === sess);
+          if (m) throw new HttpErr(409, "already_member", `A chat on this computer is already ${m.name} in this room, from this folder.`, { name: m.name });
+          const w = this.pending().find((x) => x.room === room.id && x.kind === "join" && x.account === inv.account && live(x) && x.body.name !== b.name && same(x.body) && (x.body.session_id || "") === sess);
+          if (w) throw new HttpErr(409, "join_pending", `A chat on this computer already asked to join this room from this folder as ${w.body.name}.`, { name: w.body.name });
+        }
         memberId = c.uuidv7();
       }
       inv.uses++;
