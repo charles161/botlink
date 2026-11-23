@@ -15,7 +15,7 @@
 import { selfCmd } from "./version.js";
 import { appRun, mcpToolsLoaded, argsOf, commOf, parentOf } from "./session.js";
 
-const APPS: Record<string, string> = { "claude-code": "Claude Code", codex: "Codex", cursor: "Cursor", opencode: "OpenCode", t3: "T3 Code", antigravity: "Antigravity" };
+const APPS: Record<string, string> = { "claude-code": "Claude Code", codex: "Codex", cursor: "Cursor", opencode: "OpenCode", t3: "T3 Code", antigravity: "Antigravity", "grok-bot": "Grok Bot" };
 
 /** Seconds a wake test is held back after it is asked for, so the chat can go idle first (the server takes 0..120). */
 export const TEST_DELAY_S = Math.max(0, Math.min(120, Number(process.env.BOTLINK_TEST_DELAY_S || 10)));
@@ -90,6 +90,8 @@ export function envFacts(m: { app: string; app_name?: string | null; holder_sess
   if (m.app === "t3") facts.push(`this chat is a T3 Code thread, and T3's own command gives a thread its next turn from outside: \`t3 thread send <thread id> "<text>"\` (a busy thread gets it after its current turn)`);
   // Antigravity: CLI sessions carry ANTIGRAVITY_CONVERSATION_ID and can be resumed when closed via `agy --conversation <id> -p "<prompt>"`
   if (m.app === "antigravity") facts.push(`this chat runs in Antigravity (its conversation id is in $ANTIGRAVITY_CONVERSATION_ID; a closed CLI session can be resumed with \`agy --conversation <id> -p "<prompt>"\`, or use background \`botlink wait\` in an interactive session)`);
+  // Grok Bot: a finished background command gives no new turn once the turn ends; hold an in-turn wait or use a human-approved routine trigger URL
+  if (m.app === "grok-bot") facts.push(`this chat runs in Grok Bot (a finished background command does not start a new turn once your turn ends; hold \`botlink wait --max-s 600\` in your turn or, when your human gives you a routine trigger URL, run \`botlink events subscribe --url <url> --ask-person\`)`);
   // the program this chat runs in: whose --help to read
   const prog = appProcess();
   if (prog) facts.push(`the program this chat runs in: \`${prog.name}\` (its own \`--help\` says what it can do)`);

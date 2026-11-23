@@ -97,28 +97,28 @@ function cli(home, cwd, ...args) {
 }
 async function joinChat(name) {
   const home = mkdtempSync(join(tmpdir(), `botlink-smoke-${name}-`));
-  const proj = join(home, name);
-  mkdirSync(proj);
+  const work = join(home, name);
+  mkdirSync(work, { recursive: true });
   homes.push(home);
   // no app to detect from a plain shell: name one, as a chat in an unknown app is told to (core.askAppName)
-  const j = cli(home, proj, "join", invite, "--name", name, "--job", "smoke test", "--app-name", "smoke test");
+  const j = cli(home, work, "join", invite, "--name", name, "--job", "smoke test", "--app-name", "smoke test");
   if (j.status !== 0) fail(`join ${name}: exit ${j.status}\n${j.out}`);
   const card = await approve(name);
   step(`${name} asked to join (code ${card.match_code}); approved with a signed member-list entry`);
-  const w = cli(home, proj, "join", "--wait");
+  const w = cli(home, work, "join", "--wait");
   if (w.status !== 0) fail(`join --wait ${name}: exit ${w.status}\n${w.out}`);
   step(`${name} is in the room`);
-  return { home, proj };
+  return { home, work };
 }
 
 try {
   const a = await joinChat("alpha");
   const b = await joinChat("bravo");
   const token = `smoke-${c.nonceHex().slice(0, 10)}`;
-  const s = cli(a.home, a.proj, "send", "--as", "alpha", "--to", "bravo", "--intent", "fyi", "--text", `hello from alpha ${token}`);
+  const s = cli(a.home, a.work, "send", "--as", "alpha", "--to", "bravo", "--intent", "fyi", "--text", `hello from alpha ${token}`);
   if (s.status !== 0) fail(`send: exit ${s.status}\n${s.out}`);
   step("alpha sent bravo a sealed message");
-  const i = cli(b.home, b.proj, "inbox", "--as", "bravo");
+  const i = cli(b.home, b.work, "inbox", "--as", "bravo");
   if (i.status !== 0) fail(`inbox: exit ${i.status}\n${i.out}`);
   if (!i.out.includes(token)) fail(`bravo's inbox does not show the message:\n${i.out}`);
   step("bravo read it: the text arrived and opened on bravo's side only");

@@ -64,7 +64,7 @@ const str = (v: unknown) => (typeof v === "string" ? v : undefined);
 
 function appArg(a: Args): st.App {
   const v = str(a.app);
-  if (v && ["claude-code", "codex", "cursor", "opencode", "t3", "antigravity", "other"].includes(v)) return v as st.App;
+  if (v && ["claude-code", "codex", "cursor", "opencode", "t3", "antigravity", "grok-bot", "other"].includes(v)) return v as st.App;
   return detectApp();
 }
 
@@ -215,8 +215,8 @@ async function waitCmd(a: Args, label: string): Promise<number> {
  *  test goes out right after the join, as before. A chat with nothing set up picks its own way to listen first, and is
  *  tested when it starts listening (Kickoff 2). */
 export function wakeReadyFor(app: st.App): boolean {
-  // T3 Code / Antigravity: no built-in bot-link hooks installed into these apps
-  if (app === "other" || app === "t3" || app === "antigravity") return false;
+  // T3 Code / Antigravity / Grok Bot: no built-in bot-link hooks installed into these apps
+  if (app === "other" || app === "t3" || app === "antigravity" || app === "grok-bot") return false;
   try {
     return !!configuredHere(app) || serviceInstalledFor(app);
   } catch {
@@ -259,7 +259,7 @@ async function statusText(room?: string): Promise<string> {
   const waitingThere = r0 ? rs.filter((r) => r.kind === "join" && r.room?.name === r0) : [];
   lines.push(acting.length ? `Acting as: ${acting.map((m) => `${m.name} in #${m.room.name}`).join(", ")}` : r0 ? `Acting as in #${r0}: nobody (this chat is not a member of #${r0}${waitingThere.length ? `; its request to join as ${waitingThere[0].name} is waiting for approval: finish it with \`${selfCmd()} join --wait\`` : ""}).` : "Acting as: nobody (not a member here).");
   // listen lab #7: bot-link's MCP server may be loaded without setup (--mcp-config): what runs counts, not the config
-  if (app !== "other" && app !== "t3" && app !== "antigravity") lines.push(`Tools: ${mcpToolsLoaded() ? "this chat has the bot-link tools" : configuredHere(app) ? `set up for ${label}, loaded after a restart` : `not set up in ${label} (see \`${selfCmd()} setup ${app}\`)`}; the command line works either way.`);
+  if (app !== "other" && app !== "t3" && app !== "antigravity" && app !== "grok-bot") lines.push(`Tools: ${mcpToolsLoaded() ? "this chat has the bot-link tools" : configuredHere(app) ? `set up for ${label}, loaded after a restart` : `not set up in ${label} (see \`${selfCmd()} setup ${app}\`)`}; the command line works either way.`);
   // staging tester, 17 Nov 2026 (L.1): status named no command to run bot-link again; help, join and create-room did
   lines.push(`Run bot-link here with: ${selfCmd()} <command>   (\`${selfCmd()} --help\` lists them)`);
   if (!ms.length && !rs.length) lines.push("No bot-link members on this computer.");
@@ -332,7 +332,7 @@ export function restartLine(app: st.App, claimed: string | null = null): string 
   const label = (h.LABELS as Record<string, string>)[app] || "this app";
   // a chat that named itself another app (core.claimedApp): what bot-link sets up is for the app it detected, not this one
   if (claimed) return mcpToolsLoaded() ? "This chat already has the bot-link tools; no restart needed." : `bot-link has no set-up for ${claimed}; the commands above are how this chat uses bot-link.`;
-  if (app === "other" || app === "t3" || app === "antigravity") return "bot-link has no tools for this app; the commands above are how this chat uses bot-link.";
+  if (app === "other" || app === "t3" || app === "antigravity" || app === "grok-bot") return "bot-link has no tools for this app; the commands above are how this chat uses bot-link.";
   // listen lab #7: the tools may be loaded without setup (an MCP config passed to the app): say what is true
   if (mcpToolsLoaded()) return "This chat already has the bot-link tools; no restart needed.";
   const where = configuredHere(app);

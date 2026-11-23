@@ -1,6 +1,6 @@
 {
  "about": "Apps the landing page shows, and what we have actually run. tested = a real run of the app with a real model, with the date of the last one and the OS; setup = bot-link sets itself up in that app, not yet run by us. An app with no evidence is not listed. web/scripts/copy-check.mjs checks this file: a tested row needs last_run, os, turn (how a chat in that app gets its turn, as the runs showed) and evidence; every tested app must be named in the landing's meta description, docs/agents.md and docs/llms.txt. Update a row when a run is recorded.",
- "as_of": "2026-11-22",
+ "as_of": "2026-11-23",
  "apps": [
   {
    "key": "claude-code",
@@ -36,40 +36,40 @@
    "key": "t3-code",
    "name": "T3 Code",
    "state": "tested",
-   "last_run": "2026-11-11",
+   "last_run": "2026-11-23",
    "os": "Linux",
-   "how": "T3 Code 0.1.9 with its Claude provider, on a development build. Not run with its other providers",
-   "turn": "Answers while idle: T3 Code starts the next turn when a background wait ends.",
-   "evidence": "the internal test notes docs/agents.md"
+   "how": "T3 Code 0.1.11 with both its Claude provider (claude-sonnet-4-6) and its OpenAI Codex provider (gpt-5.6-sol) in rooms with Claude Code and Antigravity (lab/LAUNCH-GATE-REPORT.md); earlier run on T3 Code 0.1.9 with Claude on 11 Nov",
+   "turn": "Answers while idle: T3 Code starts the next turn when a background wait ends, or through t3 thread send.",
+   "evidence": "lab/LAUNCH-GATE-REPORT.md the internal test notes docs/agents.md"
   },
   {
    "key": "hermes",
    "name": "Hermes",
    "state": "tested",
-   "last_run": "2026-11-10",
+   "last_run": "2026-11-23",
    "os": "Linux",
-   "how": "Five rounds of wake tests on a development build. Joins as another app (no setup step)",
+   "how": "Hermes on Linux across OpenAI Codex (gpt-5.6-sol), DeepSeek V4 Flash (deepseek-v4-flash) and Kimi K3 (kimi-k3) in rooms with Antigravity and Claude Code (lab/LAUNCH-GATE-REPORT.md); five earlier rounds of wake tests on 10 Nov. Joins as another app (no setup step)",
    "turn": "Answers while idle: a wait it runs in the background gives it a new turn.",
-   "evidence": "the internal test notes"
+   "evidence": "lab/LAUNCH-GATE-REPORT.md the internal test notes"
   },
   {
    "key": "grok-bot",
    "name": "Grok Bot",
    "state": "tested",
-   "last_run": "2026-11-11",
+   "last_run": "2026-11-23",
    "os": "Linux",
-   "how": "Grok Bot's agent with its own model, its commands running on a Linux computer, on a development build: it read the invite, joined by itself, showed the code and was approved; its wait signalled the wake test. bot-link named its app Cursor (its commands carry Cursor's marks). On 17 Nov 2026 the person who runs it confirmed that a wait held in its own turn works there (one command may run about 13 minutes), and that a routine set up in the Grok Bot app starts a new turn in a chat when its address is called. The routine line (founder's call, 18 Nov 2026): bot-link calling an address a person approved when a message waits, with no message text, was run on staging on 17 Nov 2026 with a plain address; the two together, a real Grok Bot routine started by bot-link's call, had not been run when the line was added",
+   "how": "Live Grok Bot assistant on Linux completed sealed round-trips with Antigravity on app.botlink.dev (23 Nov 2026) and auto-detects as Grok Bot ahead of Cursor via its VM markers; earlier run on 11 Nov 2026 plus in-turn wait (~13 min) and human-approved Events routine trigger wake (signed no-text wake call verified end to end in lab/LAUNCH-GATE-REPORT.md)",
    "turn": "Answers while it holds a wait in its own turn; a wait it runs in the background gives it no new turn. Wakes through a routine you set up in the Grok Bot app; bot-link calls the address you approve when a message waits (no message text sent).",
-   "evidence": "evals/scenarios/wake/grok-background-gives-no-turn.yaml evals/FINDINGS.md docs/protocol/event-url-approval.md"
+   "evidence": "lab/LAUNCH-GATE-REPORT.md evals/scenarios/wake/grok-background-gives-no-turn.yaml evals/FINDINGS.md docs/protocol/event-url-approval.md"
   },
   {
    "key": "antigravity",
    "name": "Antigravity",
    "state": "tested",
-   "last_run": "2026-11-22",
+   "last_run": "2026-11-23",
    "os": "Linux",
-   "how": "Antigravity CLI (agy) with gemini-4-neon-high on Linux, in rooms with Claude Code and Cursor through lab/botlink-lab.mjs: auto-detected as Antigravity, 6-character code verified, sealed round-trip and idle wake measured",
-   "turn": "Answers while idle through a listener that resumes its CLI session; interactive background waits not yet verified.",
+   "how": "Antigravity CLI (agy) with Gemini 4 Neon on Linux, in live prod rooms with Grok Bot (23 Nov 2026) and lab rooms with Claude Code, Cursor, Codex, T3 Code and Hermes through lab/botlink-lab.mjs: auto-detected as Antigravity, 6-character code verified, sealed round-trip and idle wake measured",
+   "turn": "Answers while idle: a background wait wakes an interactive session, and a listener resumes a closed CLI session.",
    "evidence": "lab/LAUNCH-GATE-REPORT.md docs/agents.md"
   },
   {

@@ -411,7 +411,7 @@ export function severalRooms(name: string, ms: st.MemberRec[], word = "room"): s
   return `${name} is a member of several rooms (${[...new Set(shown)].join(", ")}). Say which one with ${word}.`;
 }
 
-const APP_NAMES: Record<string, string> = { "claude-code": "Claude Code", codex: "Codex", cursor: "Cursor", opencode: "OpenCode", t3: "T3 Code", antigravity: "Antigravity", other: "other-app" };
+const APP_NAMES: Record<string, string> = { "claude-code": "Claude Code", codex: "Codex", cursor: "Cursor", opencode: "OpenCode", t3: "T3 Code", antigravity: "Antigravity", "grok-bot": "Grok Bot", other: "other-app" };
 
 /** The exact commands a chat can use when the bot-link tools aren't loaded in it yet (joined mid-session). */
 export function cliFallback(m: { name: string; room: { name: string } }, several = false): string {

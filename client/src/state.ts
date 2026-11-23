@@ -114,12 +114,12 @@ export function saveConfig(c: LocalConfig) {
 }
 
 // ------------------------------------------------------------------ members
-/** The app of a chat on this computer. "opencode", "t3", and "antigravity" are local only: on the wire (signed roster,
+/** The app of a chat on this computer. "opencode", "t3", "antigravity", and "grok-bot" are local only: on the wire (signed roster,
  *  join request `app`) they are "other", with `app_name` as unsigned display data. */
-export type App = "claude-code" | "codex" | "cursor" | "opencode" | "t3" | "antigravity" | "other";
+export type App = "claude-code" | "codex" | "cursor" | "opencode" | "t3" | "antigravity" | "grok-bot" | "other";
 /** The signed-roster app for a local app. */
 export const wireApp = (a: App): "claude-code" | "codex" | "cursor" | "other" =>
-  a === "opencode" || a === "t3" || a === "antigravity" ? "other" : a;
+  a === "opencode" || a === "t3" || a === "antigravity" || a === "grok-bot" ? "other" : a;
 export type Turn = "always_on" | "wake" | "listening" | "on_turn";
 
 export interface MemberRec {
@@ -500,7 +500,7 @@ export function exists(path: string) {
 }
 
 /** The display name an app gets on the dashboard when it isn't one bot-link knows by its roster app. */
-export const KNOWN_APP_NAME: Partial<Record<App, string>> = { opencode: "OpenCode", t3: "T3 Code", antigravity: "Antigravity" };
+export const KNOWN_APP_NAME: Partial<Record<App, string>> = { opencode: "OpenCode", t3: "T3 Code", antigravity: "Antigravity", "grok-bot": "Grok Bot" };
 
 /** app_name as the server accepts it: printable, one line, no fence markers, 1-40 characters (else null). */
 export function cleanAppName(v: unknown): string | null {

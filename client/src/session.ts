@@ -239,17 +239,32 @@ function appProcessFolder(): string | null {
   }
 }
 
+/** Grok Bot's Linux runtime carries Cursor's marks (`CURSOR_AGENT`, `CURSOR_CONVERSATION_ID`) alongside its own
+ *  `GROK_BOT_*` / `SAND_SUPERVISOR_ENABLED` + `SAND_BOX_*` env vars (verified on a live Grok Bot VM, 23 Nov 2026). */
+export function isGrokBotEnv(env: NodeJS.ProcessEnv = process.env): boolean {
+  const has = (k: string) => !!(env[k] || "").trim();
+  const keys = Object.keys(env);
+  if (keys.some((k) => k.startsWith("GROK_BOT_") && has(k))) return true;
+  return (has("SAND_SUPERVISOR_ENABLED") || has("SAND_MANIFEST_V2")) && keys.some((k) => k.startsWith("SAND_BOX_") && has(k));
+}
+
+/** Grok Bot's shared Linux boxes carry hostnames of the form `grok-bot-vm-<digits>`. */
+export function isGrokBotHost(host: string = hostname()): boolean {
+  return /^grok-bot-vm-/i.test((host || "").trim());
+}
+
 /**
  * The apps whose chat may run this command, from the env they give their shell commands and MCP servers (strongest
- * first): Cursor's agent (CURSOR_CONVERSATION_ID / CURSOR_AGENT), OpenCode (OPENCODE=1 + OPENCODE_PID, set by the
- * opencode process for everything it starts: probed on opencode 1.19.5), Claude Code (CLAUDECODE / CLAUDE_CODE_ENTRYPOINT /
- * CLAUDE_CODE_SESSION_ID), Codex (CODEX_THREAD_ID / CODEX_SESSION_ID / CODEX_SANDBOX*). CODEX_HOME / CURSOR_CONFIG_DIR /
- * OPENCODE_CONFIG are user settings, not signals. OpenCode plus another app's env: detectApp checks OPENCODE_PID's
- * ancestry; between the other three the order above wins (unchanged from 1e337df).
+ * first): Grok Bot (GROK_BOT_* / SAND_SUPERVISOR_ENABLED+SAND_BOX_* — checked before Cursor because Grok Bot's VM
+ * also sets CURSOR_AGENT), Cursor's agent (CURSOR_CONVERSATION_ID / CURSOR_AGENT), OpenCode (OPENCODE=1 + OPENCODE_PID,
+ * set by the opencode process for everything it starts: probed on opencode 1.19.5), Claude Code (CLAUDECODE /
+ * CLAUDE_CODE_ENTRYPOINT / CLAUDE_CODE_SESSION_ID), Codex (CODEX_THREAD_ID / CODEX_SESSION_ID / CODEX_SANDBOX*),
+ * Antigravity (ANTIGRAVITY_*). CODEX_HOME / CURSOR_CONFIG_DIR / OPENCODE_CONFIG are user settings, not signals.
  */
-export function appsFromEnv(env: NodeJS.ProcessEnv = process.env): ("claude-code" | "codex" | "cursor" | "opencode" | "antigravity")[] {
+export function appsFromEnv(env: NodeJS.ProcessEnv = process.env): ("grok-bot" | "claude-code" | "codex" | "cursor" | "opencode" | "antigravity")[] {
   const has = (k: string) => !!(env[k] || "").trim();
-  const out: ("claude-code" | "codex" | "cursor" | "opencode" | "antigravity")[] = [];
+  const out: ("grok-bot" | "claude-code" | "codex" | "cursor" | "opencode" | "antigravity")[] = [];
+  if (isGrokBotEnv(env)) out.push("grok-bot");
   if (has("CURSOR_CONVERSATION_ID") || has("CURSOR_AGENT")) out.push("cursor");
   // only what Claude Code sets for its own commands (CLAUDE_CODE_USE_BEDROCK / _EFFORT_LEVEL etc. are user settings)
   if (env.CLAUDECODE === "1" || has("CLAUDE_CODE_ENTRYPOINT") || has("CLAUDE_CODE_SESSION_ID")) out.push("claude-code");
@@ -258,8 +273,8 @@ export function appsFromEnv(env: NodeJS.ProcessEnv = process.env): ("claude-code
   if (env.OPENCODE === "1" || /^\d+$/.test((env.OPENCODE_PID || "").trim())) out.push("opencode");
   return out;
 }
-/** The env's app when the env alone decides: one signal, or several without OpenCode (cursor > claude-code > codex > antigravity). */
-export function appFromEnv(env: NodeJS.ProcessEnv = process.env): "claude-code" | "codex" | "cursor" | "opencode" | "antigravity" | null {
+/** The env's app when the env alone decides: one signal, or several without OpenCode (grok-bot > cursor > claude-code > codex > antigravity). */
+export function appFromEnv(env: NodeJS.ProcessEnv = process.env): "grok-bot" | "claude-code" | "codex" | "cursor" | "opencode" | "antigravity" | null {
   const es = appsFromEnv(env);
   return (es.length > 1 && es.includes("opencode") ? es.filter((a) => a !== "opencode")[0] : es[0]) ?? null;
 }
@@ -275,15 +290,18 @@ export function appOfComm(comm: string): "claude-code" | "codex" | "cursor" | "o
   return null;
 }
 
-const DETECTED = ["claude-code", "codex", "cursor", "opencode", "t3", "antigravity", "other"] as const;
-/** Which app is running us: BOTLINK_APP, the env the app gives its commands, a session link, or the ancestor process names. */
-export function detectApp(): "claude-code" | "codex" | "cursor" | "opencode" | "t3" | "antigravity" | "other" {
+const DETECTED = ["claude-code", "codex", "cursor", "opencode", "t3", "antigravity", "grok-bot", "other"] as const;
+/** Which app is running us: BOTLINK_APP, the env/host the app gives its commands, a session link, or the ancestor process names. */
+export function detectApp(host: string = hostname()): "claude-code" | "codex" | "cursor" | "opencode" | "t3" | "antigravity" | "grok-bot" | "other" {
   const env = (process.env.BOTLINK_APP || "").trim();
   if ((DETECTED as readonly string[]).includes(env)) return env as any;
   // T3 Code runs Claude Code / Codex / other providers as its threads and gives their commands T3CODE_THREAD_ID
   // (probed on t3 0.1.9: a Claude thread also has CLAUDECODE=1 and CLAUDE_CODE_ENTRYPOINT=t3-code). The chat the
   // human sees is the T3 thread, so T3 wins over the provider under it.
   if (t3ThreadFromEnv()) return "t3";
+  // Grok Bot runs shell commands in a VM that also sets CURSOR_AGENT / CURSOR_CONVERSATION_ID, so check Grok Bot's
+  // own env/hostname markers before Cursor.
+  if (isGrokBotEnv(process.env) || isGrokBotHost(host)) return "grok-bot";
   const es = appsFromEnv();
   if (es.includes("opencode") && es.length > 1) {
     // OpenCode plus another app's env: OpenCode wins when its own process (OPENCODE_PID) is our ancestor and no

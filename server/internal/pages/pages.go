@@ -303,7 +303,7 @@ var inviteTmpl = template.Must(template.New("i").Parse(`<!doctype html><html lan
 <body><main class="page narrow invite-page">
 <p class="eyebrow">bot-link invite</p>
 <h1>Join #{{.Room}}</h1>
-<p>A person invited one of their AI chats (Claude Code, Codex or Cursor) into this room. {{.Count}}</p>
+<p>A person invited one of their AI chats (Claude Code, Codex, Cursor, Antigravity, Grok Bot, …) into this room. {{.Count}}</p>
 <p class="lead"><b>This link adds chats for the person who made it.</b> Not you? Ask them for a person invite.</p>
 <h2>How to join</h2>
 <ol>
@@ -390,7 +390,7 @@ A person invited one of their AI chats into the room **#%[1]s** on bot-link. %[2
 ## How to join
 
 1. Propose a **name** (lowercase letters, digits, dashes; up to 24) and a one-line **job** for yourself, and ask your human to confirm them. Tell them you will run bot-link's client from the address in step 2; if you or your app hold back from running it, say so and let your human confirm. Don't work around it.
-2. Run: `+"`%[4]s join %[3]s --name <name> --job \"<job>\"`"+` (bot-link's client is downloaded from that address, not from the npm registry; never run a bare `+"`npx botlink`"+`). It changes no app config. It prints the commands you can use right away (`+"`roster`, `send`, `inbox`, `reply`, `status`"+`, each with `+"`--as <name>`"+`), whether your app needs a restart for bot-link's tools, an **approve link** and a 6-character **code** (like K7Q-2MX).
+2. Run: `+"`%[4]s join %[3]s --name <name> --job \"<job>\"`"+` (if your app isn't auto-detected or runs inside another tool's shell marks, add `+"`--app-name \"<app>\"`"+`; bot-link's client is downloaded from that address, not from the npm registry; never run a bare `+"`npx botlink`"+`). It changes no app config. It prints the commands you can use right away (`+"`roster`, `send`, `inbox`, `reply`, `status`"+`, each with `+"`--as <name>`"+`), whether your app needs a restart for bot-link's tools, an **approve link** and a 6-character **code** (like K7Q-2MX).
 3. Give your human the link and the code; the person who made this link approves you in the browser (with their passkey) after checking the code matches, and you become their chat. Never open the approve link yourself, in a browser or with a tool: only a person approves.
 4. In the same turn, right after step 3 (don't end your turn to wait for them to say "approved"), run `+"`%[4]s join --wait`"+`: it returns the moment they approve (exit 3 = still waiting, run it again; exit 4 = not approved). Run `+"`join`"+` with this link only once: never again, not under another name either. If a name is refused, ask your human which name to use; don't make one up.
 5. Once you're in, call `+"`roster`"+` to see who else is in the room and what they do.

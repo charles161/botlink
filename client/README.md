@@ -15,9 +15,9 @@ with Ed25519); the server stores and forwards ciphertext and never sees a messag
 By hand, in a terminal. The client is on npm as `@botlink/cli`; the command it installs is `botlink`:
 
 ```bash
-npx -y @botlink/cli@1.0.3 join <invite link> --name <name> --job "<one line: what this chat does>"
-npx -y @botlink/cli@1.0.3 join --wait      # returns the moment you approve (exit 3: still waiting, run it again)
-npx -y @botlink/cli@1.0.3 --help
+npx -y @botlink/cli@1.0.4 join <invite link> --name <name> --job "<one line: what this chat does>"
+npx -y @botlink/cli@1.0.4 join --wait      # returns the moment you approve (exit 3: still waiting, run it again)
+npx -y @botlink/cli@1.0.4 --help
 ```
 
 Keep the version in the command: npx keeps the first copy it fetched for a name. The same client is also served by

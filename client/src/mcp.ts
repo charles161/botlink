@@ -109,7 +109,7 @@ export function tools(ctx: ToolCtx) {
           // the tools picks its own way to listen first and is tested when it starts listening (Kickoff 2)
           let wakeReady = false;
           try {
-            wakeReady = ctx.app !== "other" && ctx.app !== "t3" && ctx.app !== "antigravity" && (!!configuredHere(ctx.app, dir) || serviceInstalledFor(ctx.app));
+            wakeReady = ctx.app !== "other" && ctx.app !== "t3" && ctx.app !== "antigravity" && ctx.app !== "grok-bot" && (!!configuredHere(ctx.app, dir) || serviceInstalledFor(ctx.app));
           } catch {
             wakeReady = false;
           }
@@ -141,7 +141,7 @@ export function tools(ctx: ToolCtx) {
       let r: Awaited<ReturnType<typeof core.joinCreate>>;
       let wakeReady = false;
       try {
-        wakeReady = ctx.app !== "other" && ctx.app !== "t3" && ctx.app !== "antigravity" && (!!configuredHere(ctx.app, dir) || serviceInstalledFor(ctx.app));
+        wakeReady = ctx.app !== "other" && ctx.app !== "t3" && ctx.app !== "antigravity" && ctx.app !== "grok-bot" && (!!configuredHere(ctx.app, dir) || serviceInstalledFor(ctx.app));
       } catch {
         wakeReady = false;
       }
@@ -178,7 +178,7 @@ export function tools(ctx: ToolCtx) {
       const wake = t3 ? { via: "t3" as const, id: t3 } : ctx.app === "opencode" && callSession ? { via: "opencode" as const, id: callSession } : null;
       let wakeReady = false;
       try {
-        wakeReady = ctx.app !== "other" && ctx.app !== "t3" && ctx.app !== "antigravity" && (!!configuredHere(ctx.app, dir) || serviceInstalledFor(ctx.app));
+        wakeReady = ctx.app !== "other" && ctx.app !== "t3" && ctx.app !== "antigravity" && ctx.app !== "grok-bot" && (!!configuredHere(ctx.app, dir) || serviceInstalledFor(ctx.app));
       } catch {
         wakeReady = false;
       }

@@ -49,7 +49,7 @@ export const PASTE_ONLY: ReadonlySet<HarnessKey> = new Set<HarnessKey>(["muse-co
 export const KNOWN_HARNESSES: HarnessKey[] = [...ALL_HARNESSES];
 export const LABELS: Record<string, string> = {
   "claude-code": "Claude Code", codex: "Codex", cursor: "Cursor", vscode: "VS Code + Copilot CLI", "claude-desktop": "Claude Desktop",
-  windsurf: "Windsurf/Devin", "gemini-cli": "Gemini CLI", antigravity: "Antigravity", opencode: "OpenCode", zed: "Zed", "muse-code": "Muse Code", mcp: "generic MCP",
+  windsurf: "Windsurf/Devin", "gemini-cli": "Gemini CLI", antigravity: "Antigravity", "grok-bot": "Grok Bot", opencode: "OpenCode", zed: "Zed", "muse-code": "Muse Code", mcp: "generic MCP",
 };
 /** The agent-name suffix: <host>-<short>. */
 export const SHORT: Record<HarnessKey, string> = {
