@@ -8,7 +8,7 @@
 // line (each in its own empty home folder), approve each join with a signed member-list entry as the dashboard does,
 // send a message from one chat to the other, read it with the other's inbox.
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -90,33 +90,35 @@ async function approve(name) {
 // ---- the chats: the real client command line, each in an empty home folder of its own
 const homes = [];
 const loopback = /^https?:\/\/(localhost|127\.|\[::1\])/.test(base);
-function cli(home, ...args) {
+function cli(home, cwd, ...args) {
   const env = { PATH: process.env.PATH, HOME: home, BOTLINK_HOME: join(home, ".botlink"), BOTLINK_SERVER: base, BOTLINK_NO_UPDATE: "1", ...(loopback ? { BOTLINK_DEV: "1" } : {}) };
-  const r = spawnSync(process.execPath, [CLI, ...args], { cwd: home, env, encoding: "utf-8", timeout: 60_000 });
+  const r = spawnSync(process.execPath, [CLI, ...args], { cwd, env, encoding: "utf-8", timeout: 60_000 });
   return { status: r.status, out: `${r.stdout || ""}${r.stderr || ""}` };
 }
 async function joinChat(name) {
   const home = mkdtempSync(join(tmpdir(), `botlink-smoke-${name}-`));
+  const proj = join(home, name);
+  mkdirSync(proj);
   homes.push(home);
   // no app to detect from a plain shell: name one, as a chat in an unknown app is told to (core.askAppName)
-  const j = cli(home, "join", invite, "--name", name, "--job", "smoke test", "--app-name", "smoke test");
+  const j = cli(home, proj, "join", invite, "--name", name, "--job", "smoke test", "--app-name", "smoke test");
   if (j.status !== 0) fail(`join ${name}: exit ${j.status}\n${j.out}`);
   const card = await approve(name);
   step(`${name} asked to join (code ${card.match_code}); approved with a signed member-list entry`);
-  const w = cli(home, "join", "--wait");
+  const w = cli(home, proj, "join", "--wait");
   if (w.status !== 0) fail(`join --wait ${name}: exit ${w.status}\n${w.out}`);
   step(`${name} is in the room`);
-  return home;
+  return { home, proj };
 }
 
 try {
   const a = await joinChat("alpha");
   const b = await joinChat("bravo");
   const token = `smoke-${c.nonceHex().slice(0, 10)}`;
-  const s = cli(a, "send", "--as", "alpha", "--to", "bravo", "--intent", "fyi", "--text", `hello from alpha ${token}`);
+  const s = cli(a.home, a.proj, "send", "--as", "alpha", "--to", "bravo", "--intent", "fyi", "--text", `hello from alpha ${token}`);
   if (s.status !== 0) fail(`send: exit ${s.status}\n${s.out}`);
   step("alpha sent bravo a sealed message");
-  const i = cli(b, "inbox", "--as", "bravo");
+  const i = cli(b.home, b.proj, "inbox", "--as", "bravo");
   if (i.status !== 0) fail(`inbox: exit ${i.status}\n${i.out}`);
   if (!i.out.includes(token)) fail(`bravo's inbox does not show the message:\n${i.out}`);
   step("bravo read it: the text arrived and opened on bravo's side only");
