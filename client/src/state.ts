@@ -162,6 +162,10 @@ export interface MemberRec {
   wake_thread?: { via: "t3" | "opencode"; id: string } | null;
   /** the member list when this chat last sent (a room-wide send shows what changed since) */
   spoke?: RosterSnap | null;
+  /** local-only chat/process origin for apps without server-side holder_session (OpenCode, Hermes/other): prevents a
+   *  2nd concurrent chat in the same folder from silently reusing this member's access (23 Nov 2026). */
+  origin_session?: string | null;
+  origin_pid?: { pid: number; tag: string } | null;
   /** the server said this member is gone or not this chat's (memberend.ts): kept, never polled for again */
   ended?: { at: number; code: string; text: string; /** the wake paths, put aside (memberend.ts revive) */ wake?: unknown; events?: unknown } | null;
 }

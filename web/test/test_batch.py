@@ -182,6 +182,29 @@ def flow(b, base, vp):
         pg.evaluate("() => getSelection().removeAllRanges()")
         tick(A, j["bugfix"]["id"]); tick(A, j["deployer"]["id"])
         A.check(go_btn(A, acme).inner_text().strip() == "Approve the 2 ticked chats", f"main: button at 2: {go_btn(A, acme).inner_text()!r}")
+        # deterministic compact approvals layout & visibility checks (23 Nov 2026)
+        geom = group(A, acme).evaluate("""(g) => {
+          const cards = [...g.querySelectorAll('[data-need=join]')];
+          return cards.map((c) => {
+            const cr = c.getBoundingClientRect();
+            const code = c.querySelector('.match-code')?.getBoundingClientRect();
+            const facts = c.querySelector('.rq-facts')?.getBoundingClientRect();
+            const btn = [...c.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Approve')?.getBoundingClientRect();
+            return {
+              x: Math.round(cr.left), y: Math.round(cr.top), w: Math.round(cr.width), h: Math.round(cr.height),
+              codeOk: !!(code && code.width > 0 && code.height > 0),
+              factsOk: !!(facts && facts.width > 0 && facts.height > 0),
+              btnOk: !!(btn && btn.width >= 43.5 && btn.height >= 43.5),
+              btnBottom: btn ? Math.round(btn.bottom) : null,
+            };
+          });
+        }""")
+        A.check(len(geom) == 3 and all(c["codeOk"] and c["factsOk"] and c["btnOk"] for c in geom), f"compact: every card shows code, facts and Approve: {geom}")
+        if vp == "desktop":
+            ys = [c["y"] for c in geom]; xs = [c["x"] for c in geom]; bottoms = [c["btnBottom"] for c in geom]
+            A.check(max(ys) - min(ys) <= 6 and len(set(xs)) == 3, f"compact desktop: 3 waiting approvals must sit side-by-side, not stack down: {geom}")
+            A.check(max(bottoms) - min(bottoms) <= 6, f"compact desktop: Approve buttons must align on one baseline: {geom}")
+            A.check(max(c["h"] for c in geom) <= 620, f"compact desktop: cards stayed compact: {geom}")
         A.audit("batch-ticked"); A.shot("31-batch-ticked")
         part_shot(A, group(A, acme), "31a-batch-group")
         h0 = head_seq(A, acme)

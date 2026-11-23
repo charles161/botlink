@@ -4,7 +4,7 @@
   "paywall": false,
   "client": {
    "name": "botlink",
-   "version": "1.0.4",
+   "version": "1.0.5",
    "node": ">=20",
    "dependencies": 5,
    "src": [

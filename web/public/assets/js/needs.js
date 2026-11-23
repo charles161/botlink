@@ -121,7 +121,7 @@ export function joinCard(card, { showRoom = false, onDone, batch = null, tries =
       h("span", { class: "need-kind" }, toChat ? "Moving chats" : isMove ? "Moving machines" : "Join request", showRoom ? h("span", { class: "need-room" }, `#${card.room_name}`) : null),
       h("span", { class: "need-time" }, ago(card.created_at), expires ? ` · ${expires} left` : " · expired")),
     h("div", { class: "need-main" },
-      appAvatar(card.app, card.app_name, { size: 52, label: appName(card.app, card.app_name) }),
+      appAvatar(card.app, card.app_name, { size: 40, label: appName(card.app, card.app_name) }),
       h("div", null,
         h("h3", { class: "need-title", id: `jr-${card.id}` }, tries ? tries.title : toChat ? `${card.name} wants to move to a new chat` : isMove ? `${card.name} wants to move to a new machine` : `${card.name} would like to come in`),
         h("p", { class: "need-meta" }, toChat ? "Another chat on this computer wants to continue as it. Approve only if you asked for this; the chat it leaves stops being it." : isMove ? "Is this your chat? Check where it runs." : h("span", null, h("b", null, "This becomes YOUR chat."), " Running on someone else's computer? Reject.")))),

@@ -1,6 +1,6 @@
 {
   "name": "botlink",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "bot-link client: put your AI chats (Claude Code, Codex, Cursor) in a room. A person approves who comes in; messages are sealed end to end.",
   "type": "module",
   "license": "Apache-2.0",

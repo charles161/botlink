@@ -188,9 +188,37 @@ export function chatSession(app: string, given: string | null = currentSession()
 export function holderSession(app: string, given: string | null = currentSession().id): string | null {
   return app === "cursor" ? null : chatSession(app, given);
 }
-/** The Cursor chat a Cursor request is made from: the id the chat passed, else its shell's CURSOR_CONVERSATION_ID. */
+/** The Cursor / Grok Bot chat a request is made from: the id the chat passed, else its shell's CURSOR_CONVERSATION_ID. */
 export function cursorChatOf(app: string, given: string | null = currentSession().id): string | null {
-  return app === "cursor" ? given || cursorChatFromEnv() : null;
+  return app === "cursor" || app === "grok-bot" ? given || cursorChatFromEnv() : null;
+}
+
+/** Local process identity of the calling harness (for folder-matched apps with no chat session id). */
+export function originProcess(): { pid: number; tag: string } | null {
+  const ocPid = Number((process.env.OPENCODE_PID || "").trim()) || 0;
+  const pid = ocPid > 1 ? ocPid : harnessPid();
+  if (pid <= 1) return null;
+  const tag = startTag(pid);
+  return tag ? { pid, tag } : null;
+}
+
+/** True when `origin` is this process or an ancestor of this process (same live harness process). */
+export function isAncestorProcess(origin: { pid: number; tag: string } | null | undefined): boolean {
+  if (!origin || origin.pid <= 1 || !origin.tag) return false;
+  let pid = process.pid;
+  for (let i = 0; i < 13 && pid > 1; i++) {
+    if (pid === origin.pid) return startTag(pid) === origin.tag;
+    pid = parentOf(pid);
+  }
+  return false;
+}
+
+/** True when `origin` is a STILL-RUNNING harness process that is NOT an ancestor of this process (another open chat). */
+export function isLiveOtherProcess(origin: { pid: number; tag: string } | null | undefined): boolean {
+  if (!origin || origin.pid <= 1 || !origin.tag) return false;
+  if (!st.pidAlive(origin.pid)) return false;
+  if (startTag(origin.pid) !== origin.tag) return false;
+  return !isAncestorProcess(origin);
 }
 
 export type SessionSource = "explicit" | "env:BOTLINK_SESSION" | "hook" | "app-link" | "app-env" | "none";

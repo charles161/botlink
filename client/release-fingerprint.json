@@ -1,5 +1,5 @@
 {
   "about": "the client version released last and a fingerprint of its files (scripts/release-version.mjs); a changed client needs a new version: cd client && npm run release:bump",
-  "version": "1.0.4",
-  "fingerprint": "1fe79d2b411027b9cf43c32ca2b0d5f2b418c43918ba58dd6236aba6b6f1344d"
+  "version": "1.0.5",
+  "fingerprint": "831c14eb78fbb0ab56c813f6861ec84705daabf79a8b2ea9b58a7f23c82536bf"
 }

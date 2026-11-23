@@ -270,7 +270,8 @@ async function statusText(room?: string): Promise<string> {
     // "reached the chat while idle" for a first round and for a wait held in a turn)
     const t = m.selftest;
     const test = !t ? "no wake test yet" : !t.shown_at ? `wake test sent ${new Date(t.sent_at).toISOString().slice(11, 16)} UTC, not read yet` : t.woken === null ? "wake test picked up during a turn (no result; run it again)" : !t.woken ? "wake test FAILED (shown at a turn, not while idle)" : t.mode === "held" ? "wake test PASSED for a wait held in its turn (an idle chat is not reached)" : t.round === 1 ? "wake test PASSED, the first of two (an idle chat is not shown yet)" : core.idleProven(m) ? `wake test PASSED: an idle chat is reached ✓${t.how === "\`wait\`" ? " (if the second test was read in a turn that started by itself)" : ""}` : "wake test PASSED, but a later wake went unanswered (run selftest again)";
-    lines.push(`${mine.has(m.id) ? "* " : "  "}${m.name} in #${m.room.name} · ${m.app_name || h.LABELS[m.app as h.HarnessKey] || m.app}${other} · ${m.folder} · used by ${held} · ${test} · key ${m.pin.keys[m.id] || "?"}`);
+    const purpose = m.room.purpose ? ` · purpose: "${m.room.purpose}"` : "";
+    lines.push(`${mine.has(m.id) ? "* " : "  "}${m.name} in #${m.room.name} · ${m.app_name || h.LABELS[m.app as h.HarnessKey] || m.app}${other}${purpose} · ${m.folder} · used by ${held} · ${test} · key ${m.pin.keys[m.id] || "?"}`);
   }
   for (const r of rs) lines.push(`waiting: ${r.kind === "claim" ? "move of" : r.kind === "create" ? "new room, as" : "join as"} ${r.name} in #${r.room.name} · code ${core.groupCode(r.match_code)} · key ${r.fingerprint}`);
   const { allListeners } = await import("./listen.js");
@@ -295,7 +296,7 @@ async function statusText(room?: string): Promise<string> {
       const v = await core.refreshRoster(m, sessFor(m));
       await (await import("./report.js")).refreshPlan(m, sessFor(m)); // history days for room reports (never throws)
       const d = v.display.get(m.id);
-      if (d) lines.push(`The room sees ${m.name} as: "${d.turn_label}"${(d as any).self_label ? ` (its own words: "${(d as any).self_label}")` : ""}.`);
+      if (d) lines.push(`The room #${m.room.name} sees ${m.name} as: "${d.turn_label}"${(d as any).self_label ? ` (its own words: "${(d as any).self_label}")` : ""}.`);
       if (d?.turn_label === core.LISTENER_DOWN) {
         // bot-link Events: when the wake path is an event subscription that failures turned off, say that (and how
         // to turn it on) instead of the listener advice
@@ -308,6 +309,13 @@ async function statusText(room?: string): Promise<string> {
       /* offline: skip */
     }
   }
+  if (app === "grok-bot") {
+    for (const m of acting) {
+      if (m.app === "cursor") lines.push(`Note: ${m.name} in #${m.room.name} joined before 1.0.4 as Cursor; ask your human, then run ${selfCmd()} claim ${m.name} to switch its room icon to Grok Bot.`);
+    }
+  }
+  const fbNote = core.folderFallbackNote(acting, app);
+  if (fbNote) lines.push(fbNote);
   return lines.join("\n");
 }
 
